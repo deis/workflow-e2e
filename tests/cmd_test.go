@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+
 	"github.com/onsi/gomega"
 	"github.com/onsi/gomega/types"
 	// "io"
@@ -79,7 +80,7 @@ func (c *successfulCmdMatcher) Match(actual interface{}) (bool, error) {
 	if cmdo.err != nil {
 		return false, cmdErr(cmdo)
 	}
-	return gomega.SatisfyAll(c.matchers...).Match(actual)
+	return gomega.SatisfyAll(c.matchers...).Match(cmdo.stdout)
 }
 
 // FailureMessage is the interface implementation of github.com/onsi/gomega/types.GomegaMatcher
