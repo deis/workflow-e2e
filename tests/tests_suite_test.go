@@ -43,6 +43,8 @@ var (
 	testUser          = fmt.Sprintf("test-%d", randSuffix)
 	testPassword      = "asdf1234"
 	testEmail         = fmt.Sprintf("test-%d@deis.io", randSuffix)
+	testPassword      = "asdf1234"
+	testEmail         = fmt.Sprintf("test-%d@deis.io", randSuffix)
 	url               = getController()
 )
 
