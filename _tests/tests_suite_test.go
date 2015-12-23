@@ -15,6 +15,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	"testing"
+	"time"
 )
 
 const (
@@ -23,7 +24,7 @@ const (
 )
 
 func init() {
-	rand.Seed(GinkgoConfig.RandomSeed)
+	rand.Seed(time.Now().UnixNano())
 }
 
 func getRandAppName() string {
@@ -36,12 +37,12 @@ func TestTests(t *testing.T) {
 }
 
 var (
-	testAdminUser     = fmt.Sprintf("test-admin-%d", GinkgoConfig.RandomSeed)
+	testAdminUser     = fmt.Sprintf("test-admin-%d", rand.Intn(1000))
 	testAdminPassword = "asdf1234"
-	testAdminEmail    = fmt.Sprintf("test-admin-%d@deis.io", GinkgoConfig.RandomSeed)
-	testUser          = fmt.Sprintf("test-%d", GinkgoConfig.RandomSeed)
+	testAdminEmail    = fmt.Sprintf("test-admin-%d@deis.io", rand.Intn(1000))
+	testUser          = fmt.Sprintf("test-%d", rand.Intn(1000))
 	testPassword      = "asdf1234"
-	testEmail         = fmt.Sprintf("test-%d@deis.io", GinkgoConfig.RandomSeed)
+	testEmail         = fmt.Sprintf("test-%d@deis.io", rand.Intn(1000))
 	url               = getController()
 )
 
