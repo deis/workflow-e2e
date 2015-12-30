@@ -1,19 +1,20 @@
 package _tests_test
 
 import (
+	"bytes"
 	"fmt"
 	"math/rand"
 	"os"
 	"os/exec"
 	"os/user"
 	"path"
-
-	. "github.com/onsi/ginkgo"
-
-	. "github.com/onsi/gomega"
-
 	"testing"
 	"time"
+
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/gbytes"
+	"github.com/onsi/gomega/gexec"
 )
 
 const (
@@ -35,12 +36,13 @@ func TestTests(t *testing.T) {
 }
 
 var (
-	testAdminUser     = fmt.Sprintf("test-admin-%d", rand.Intn(1000))
+	randSuffix        = rand.Intn(1000)
+	testAdminUser     = fmt.Sprintf("test-admin-%d", randSuffix)
 	testAdminPassword = "asdf1234"
-	testAdminEmail    = fmt.Sprintf("test-admin-%d@deis.io", rand.Intn(1000))
-	testUser          = fmt.Sprintf("test-%d", rand.Intn(1000))
+	testAdminEmail    = fmt.Sprintf("test-admin-%d@deis.io", randSuffix)
+	testUser          = fmt.Sprintf("test-%d", randSuffix)
 	testPassword      = "asdf1234"
-	testEmail         = fmt.Sprintf("test-%d@deis.io", rand.Intn(1000))
+	testEmail         = fmt.Sprintf("test-%d@deis.io", randSuffix)
 	url               = getController()
 )
 
@@ -52,29 +54,47 @@ var _ = BeforeSuite(func() {
 	// register the test-admin user
 	register(url, testAdminUser, testAdminPassword, testAdminEmail)
 	// verify this user is an admin by running a privileged command
-	Expect(cmd("deis users:list")).To(BeASuccessfulCmd())
+	sess, err := start("deis users:list")
+	Expect(err).To(BeNil())
+	Eventually(sess).Should(gexec.Exit(0))
 
 	// register the test user and add a key
 	register(url, testUser, testPassword, testEmail)
 	createKey("deis-test")
-	Expect(cmd("deis keys:add ~/.ssh/deis-test.pub")).To(BeASuccessfulCmdWithOutput(
-		ContainSubstring("Uploading deis-test.pub to deis... done"),
-	))
+	sess, err = start("deis keys:add ~/.ssh/deis-test.pub")
+	Expect(err).To(BeNil())
+	Eventually(sess).Should(gexec.Exit(0))
+	Eventually(sess).Should(gbytes.Say("Uploading deis-test.pub to deis... done"))
 })
 
 var _ = AfterSuite(func() {
-	// cancel the test user
-	cancel(url, testUser, testPassword)
-
-	// cancel the test-admin user
-	cancel(url, testAdminUser, testAdminPassword)
+	cancelUserSess, cancelUserErr := cancelSess(url, testUser, testPassword)
+	cancelAdminSess, cancelAdminErr := cancelSess(url, testAdminUser, testAdminPassword)
+	Expect(cancelUserErr).To(BeNil())
+	Expect(cancelAdminErr).To(BeNil())
+	cancelUserSess.Wait()
+	cancelAdminSess.Wait()
+	Expect(cancelUserSess.ExitCode()).To(BeZero())
+	Expect(cancelAdminSess.ExitCode()).To(BeZero())
+	Expect(cancelUserSess.Out.Contents()).To(ContainSubstring("Account cancelled"))
+	Expect(cancelAdminSess.Out.Contents()).To(ContainSubstring("Account cancelled"))
 })
 
 func register(url, username, password, email string) {
-	Expect(cmd("deis register %s --username=%s --password=%s --email=%s", url, username, password, email)).To(BeASuccessfulCmdWithOutput(
-		ContainSubstring("Registered %s", username),
-		ContainSubstring("Logged in as %s", username),
-	))
+	sess, err := start("deis register %s --username=%s --password=%s --email=%s", url, username, password, email)
+	Expect(err).To(BeNil())
+	Eventually(sess).Should(gbytes.Say("Registered %s", username))
+	Eventually(sess).Should(gbytes.Say("Logged in as %s", username))
+}
+
+func cancelSess(url, user, pass string) (*gexec.Session, error) {
+	lgSess, err := loginSess(url, user, pass)
+	if err != nil {
+		return nil, err
+	}
+	lgSess.Wait()
+	cmd := exec.Command("deis", "auth:cancel", fmt.Sprintf("--username=%s", user), fmt.Sprintf("--password=%s", pass), "--yes")
+	return gexec.Start(cmd, GinkgoWriter, GinkgoWriter)
 }
 
 func cancel(url, username, password string) {
@@ -82,28 +102,49 @@ func cancel(url, username, password string) {
 	login(url, username, password)
 
 	// cancel the account
-	Expect(cmd("deis auth:cancel --username=%s --password=%s --yes", username, password)).To(BeASuccessfulCmdWithOutput(
-		ContainSubstring("Account cancelled"),
-	))
+	sess, err := start("deis auth:cancel --username=%s --password=%s --yes", username, password)
+	Expect(err).To(BeNil())
+	Eventually(sess).Should(gexec.Exit(0))
+	Eventually(sess).Should(gbytes.Say("Account cancelled"))
+}
+
+func loginSess(url, user, pass string) (*gexec.Session, error) {
+	cmd := exec.Command("deis", "login", url, fmt.Sprintf("--username=%s", user), fmt.Sprintf("--password=%s", pass))
+	return gexec.Start(cmd, GinkgoWriter, GinkgoWriter)
 }
 
 func login(url, user, password string) {
-	Expect(cmd("deis login %s --username=%s --password=%s", url, user, password)).To(BeASuccessfulCmdWithOutput(
-		ContainSubstring("Logged in as %s", user),
-	))
+	sess, err := start("deis login %s --username=%s --password=%s", url, user, password)
+	Expect(err).To(BeNil())
+	Eventually(sess).Should(gexec.Exit(0))
+	Eventually(sess).Should(gbytes.Say("Logged in as %s", user))
 }
 
 func logout() {
-	Expect(cmd("deis auth:logout")).To(BeASuccessfulCmdWithOutput(
-		Equal("Logged out\n"),
-	))
+	sess, err := start("deis auth:logout")
+	Expect(err).To(BeNil())
+	Eventually(sess).Should(gexec.Exit(0))
+	Eventually(sess).Should(gbytes.Say("Logged out\n"))
 }
 
 // execute executes the command generated by fmt.Sprintf(cmdLine, args...) and returns its output as a cmdOut structure.
 // this structure can then be matched upon using the SucceedWithOutput matcher below
 func execute(cmdLine string, args ...interface{}) (string, error) {
-	c := cmd(cmdLine, args...)
-	return c.stdout, c.err
+	var stdout, stderr bytes.Buffer
+	var cmd *exec.Cmd
+	cmd = exec.Command("/bin/sh", "-c", fmt.Sprintf(cmdLine, args...))
+	cmd.Stdout, cmd.Stderr = &stdout, &stderr
+	if err := cmd.Run(); err != nil {
+		return stderr.String(), err
+	}
+	return stdout.String(), nil
+}
+
+func start(cmdLine string, args ...interface{}) (*gexec.Session, error) {
+	cmdStr := fmt.Sprintf(cmdLine, args...)
+	fmt.Println(cmdStr)
+	cmd := exec.Command("/bin/sh", "-c", cmdStr)
+	return gexec.Start(cmd, GinkgoWriter, GinkgoWriter)
 }
 
 func createKey(name string) {
@@ -116,10 +157,14 @@ func createKey(name string) {
 	path := path.Join(home, ".ssh", name)
 	// create the key under ~/.ssh/<name> if it doesn't already exist
 	if _, err := os.Stat(path); os.IsNotExist(err) {
-		Expect(cmd("ssh-keygen -q -t rsa -b 4096 -C %s -f %s -N ''", name, path)).To(BeASuccessfulCmd())
+		sess, err := start("ssh-keygen -q -t rsa -b 4096 -C %s -f %s -N ''", name, path)
+		Expect(err).To(BeNil())
+		Eventually(sess).Should(gexec.Exit(0))
 	}
 	// add the key to ssh-agent
-	Expect(cmd("eval $(ssh-agent) && ssh-add %s", path)).To(BeASuccessfulCmd())
+	sess, err := start("eval $(ssh-agent) && ssh-add %s", path)
+	Expect(err).To(BeNil())
+	Eventually(sess).Should(gexec.Exit(0))
 }
 
 func getController() string {
