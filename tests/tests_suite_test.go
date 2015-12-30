@@ -109,7 +109,7 @@ var _ = BeforeEach(func() {
 	Expect(err).NotTo(HaveOccurred())
 
 	os.Chdir(testRoot)
-	output, err = execute(`git clone git@github.com:deis/example-go.git .`)
+	output, err = execute(`git clone https://github.com/deis/example-go.git`)
 	Expect(err).NotTo(HaveOccurred(), output)
 
 	login(url, testUser, testPassword)
