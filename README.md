@@ -15,7 +15,12 @@ aware that this project is considered a work in progress.
 
 ## Set up a Deis Cluster
 
-These tests use the Deis CLI to execute a wide variety of workflows against a Deis cluster. Therefore, before you run them, you'll need a full cluster up and running in Kubernetes. Follow the below instructions to get one running.
++This directory contains [Ginkgo](http://onsi.github.io/ginkgo)/[Gomega](http://onsi.github.io/gomega) based integration tests, which exercise
+
+
+The code in this repository is a set of [Ginkgo](http://onsi.github.io/ginkgo) and [Gomega](http://onsi.github.io/gomega) based integration tests that execute commands against a running Deis cluster using the Deis CLI.
+
+Before you run them, you'll need a Deis full cluster up and running in Kubernetes. Follow the below instructions to get one running.
 
 First, install [helm](http://helm.sh) and [boot up a kubernetes cluster][install-k8s]. Next, add the
 deis repository to your chart list:
