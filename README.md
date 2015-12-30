@@ -15,6 +15,8 @@ aware that this project is considered a work in progress.
 
 ## Set up a Deis Cluster
 
+These tests use the Deis CLI to execute a wide variety of workflows against a Deis cluster. Therefore, before you run them, you'll need a full cluster up and running in Kubernetes. Follow the below instructions to get one running.
+
 First, install [helm](http://helm.sh) and [boot up a kubernetes cluster][install-k8s]. Next, add the
 deis repository to your chart list:
 
@@ -40,6 +42,22 @@ To run a single test or set of tests, use the `--focus` option:
 
 ```console
 $ ginkgo --focus=Apps .
+```
+
+## Special Note on Resetting Cluster State
+
+Periodically, tests may not clean up after themselves. While this is an ongoing issue,
+for which we're working on a permanent fix (possibly in [this GH issue](https://github.com/deis/workflow/issues/125))),
+below are commands you can run to work around the failure:
+
+```console
+$ kubectl exec -it deis-workflow-qoxhz python manage.py shell
+Python 2.7.10 (default, Aug 13 2015, 12:27:27)
+[GCC 4.9.2] on linux2
+>>> from django.contrib.auth import get_user_model
+>>> m = get_user_model()
+>>> m.objects.exclude(username='AnonymousUser').delete()
+>>> m.objects.all()                                     
 ```
 
 ## License
