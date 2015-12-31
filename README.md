@@ -48,9 +48,7 @@ $ ginkgo --focus=Apps .
 
 ## Special Note on Resetting Cluster State
 
-Periodically, tests may not clean up after themselves. While this is an ongoing issue,
-for which we're working on a permanent fix (possibly in [this GH issue](https://github.com/deis/workflow/issues/125))),
-below are commands you can run to work around the failure:
+Periodically, tests may not clean up after themselves and leave projects, users or other state behind, which will cause lots of test failures (often all tests will fail). If you see this behavior, run these commands to clean up (replace `deis-workflow-qoxhz`) with the name of the deis/workflow pod in your cluster):
 
 ```console
 $ kubectl exec -it deis-workflow-qoxhz python manage.py shell
@@ -61,6 +59,8 @@ Python 2.7.10 (default, Aug 13 2015, 12:27:27)
 >>> m.objects.exclude(username='AnonymousUser').delete()
 >>> m.objects.all()                                     
 ```
+
+Note that this is an ongoing issue for which we're planning a more comprehensive fix in [this issue](https://github.com/deis/workflow-e2e/issues/12)).
 
 ## License
 
