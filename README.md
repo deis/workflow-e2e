@@ -40,7 +40,7 @@ $ helm install deis/deis
 To run the entire test suite:
 
 ```console
-$ ginkgo .
+$ make test-integration
 ```
 
 To run a single test or set of tests, use the `--focus` option:
