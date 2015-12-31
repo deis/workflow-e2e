@@ -40,7 +40,7 @@ To run the entire test suite:
 $ make test-integration
 ```
 
-To run a single test or set of tests, use the `--focus` option:
+To run a single test or set of tests, you'll need the [ginkgo](https://github.com/onsi/ginkgo) tool installed. You can then use the `--focus` option:
 
 ```console
 $ ginkgo --focus=Apps .
