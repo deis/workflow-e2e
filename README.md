@@ -15,9 +15,6 @@ aware that this project is considered a work in progress.
 
 ## Set up a Deis Cluster
 
-+This directory contains [Ginkgo](http://onsi.github.io/ginkgo)/[Gomega](http://onsi.github.io/gomega) based integration tests, which exercise
-
-
 The code in this repository is a set of [Ginkgo](http://onsi.github.io/ginkgo) and [Gomega](http://onsi.github.io/gomega) based integration tests that execute commands against a running Deis cluster using the Deis CLI.
 
 Before you run them, you'll need a Deis full cluster up and running in Kubernetes. Follow the below instructions to get one running.
@@ -40,10 +37,10 @@ $ helm install deis/deis
 To run the entire test suite:
 
 ```console
-$ ginkgo .
+$ make test-integration
 ```
 
-To run a single test or set of tests, use the `--focus` option:
+To run a single test or set of tests, you'll need the [ginkgo](https://github.com/onsi/ginkgo) tool installed. You can then use the `--focus` option:
 
 ```console
 $ ginkgo --focus=Apps .
@@ -51,9 +48,7 @@ $ ginkgo --focus=Apps .
 
 ## Special Note on Resetting Cluster State
 
-Periodically, tests may not clean up after themselves. While this is an ongoing issue,
-for which we're working on a permanent fix (possibly in [this GH issue](https://github.com/deis/workflow/issues/125))),
-below are commands you can run to work around the failure:
+Periodically, tests may not clean up after themselves and leave projects, users or other state behind, which will cause lots of test failures (often all tests will fail). If you see this behavior, run these commands to clean up (replace `deis-workflow-qoxhz`) with the name of the deis/workflow pod in your cluster):
 
 ```console
 $ kubectl exec -it deis-workflow-qoxhz python manage.py shell
@@ -64,6 +59,8 @@ Python 2.7.10 (default, Aug 13 2015, 12:27:27)
 >>> m.objects.exclude(username='AnonymousUser').delete()
 >>> m.objects.all()                                     
 ```
+
+Note that this is an ongoing issue for which we're planning a more comprehensive fix in [this issue](https://github.com/deis/workflow-e2e/issues/12)).
 
 ## License
 
