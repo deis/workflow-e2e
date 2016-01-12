@@ -15,7 +15,7 @@ var _ = Describe("Builds", func() {
 
 			BeforeEach(func() {
 				appName = getRandAppName()
-				// This returns 404 NOT FOUND
+				// This returns 404 Not found
 				cmd, err := start("deis builds:create %s -a %s", "deis/example-go:latest", appName)
 				Expect(err).NotTo(HaveOccurred())
 				Eventually(cmd, (1 * time.Minute)).Should(gexec.Exit(0))

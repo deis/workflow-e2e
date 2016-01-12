@@ -47,16 +47,16 @@ var _ = Describe("Perms", func() {
 		It("can't create, list, or delete admin permissions", func() {
 			output, err := execute("deis perms:create %s --admin", testAdminUser)
 			Expect(err).To(HaveOccurred())
-			Expect(output).To(ContainSubstring("403 FORBIDDEN"))
+			Expect(output).To(ContainSubstring("403 Forbidden"))
 			output, err = execute("deis perms:list --admin")
 			Expect(err).To(HaveOccurred())
-			Expect(output).To(ContainSubstring("403 FORBIDDEN"))
+			Expect(output).To(ContainSubstring("403 Forbidden"))
 			output, err = execute("deis perms:delete %s --admin", testAdminUser)
 			Expect(err).To(HaveOccurred())
-			Expect(output).To(ContainSubstring("403 FORBIDDEN"))
+			Expect(output).To(ContainSubstring("403 Forbidden"))
 			output, err = execute("deis perms:list --admin")
 			Expect(err).To(HaveOccurred())
-			Expect(output).To(ContainSubstring("403 FORBIDDEN"))
+			Expect(output).To(ContainSubstring("403 Forbidden"))
 		})
 
 		// TODO: need an app already deployed--do this in BeforeSuite

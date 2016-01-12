@@ -20,14 +20,14 @@ var _ = Describe("Apps", func() {
 		It("can't get app info", func() {
 			sess, _ := start("deis info -a %s", appName)
 			Eventually(sess).Should(gexec.Exit(1))
-			Eventually(sess.Err).Should(gbytes.Say("NOT FOUND"))
+			Eventually(sess.Err).Should(gbytes.Say("Not found."))
 		})
 
 		It("can't get app logs", func() {
 			sess, err := start("deis logs -a %s", appName)
 			Expect(err).To(BeNil())
-			Eventually(sess).ShouldNot(gexec.Exit(0))
-			Eventually(sess.Err).Should(gbytes.Say("NOT FOUND"))
+			Eventually(sess).Should(gexec.Exit(1))
+			Eventually(sess.Err).Should(gbytes.Say("Not found."))
 		})
 
 		// TODO: this currently returns "Error: json: cannot unmarshal object into Go value of type []interface {}"
@@ -35,7 +35,7 @@ var _ = Describe("Apps", func() {
 			sess, err := start("deis apps:run echo Hello, 世界")
 			Expect(err).To(BeNil())
 			Eventually(sess).ShouldNot(gexec.Exit(0))
-			Eventually(sess).Should(gbytes.Say("NOT FOUND"))
+			Eventually(sess).Should(gbytes.Say("Not found."))
 		})
 
 	})
@@ -148,7 +148,7 @@ var _ = Describe("Apps", func() {
 		XIt("can't open a bogus app URL", func() {
 			cmd, err := start("deis open -a %s", getRandAppName())
 			Expect(err).To(HaveOccurred())
-			Eventually(cmd).Should(gbytes.Say("404 NOT FOUND"))
+			Eventually(cmd).Should(gbytes.Say("404 Not found"))
 		})
 
 		// V broken
