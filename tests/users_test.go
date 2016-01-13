@@ -29,7 +29,7 @@ var _ = Describe("Users", func() {
 		It("can't list all users", func() {
 			output, err := execute("deis users:list")
 			Expect(err).To(HaveOccurred())
-			Expect(output).To(ContainSubstring("403 FORBIDDEN"))
+			Expect(output).To(ContainSubstring("403 Forbidden"))
 		})
 	})
 })
