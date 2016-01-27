@@ -1,11 +1,12 @@
 package tests
 
 import (
+	"time"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
-	"time"
 )
 
 var _ = Describe("Apps", func() {
@@ -46,11 +47,17 @@ var _ = Describe("Apps", func() {
 		BeforeEach(func() {
 			cleanup = true
 			appName = getRandAppName()
+			cmd, err := start("git init")
+			Expect(err).NotTo(HaveOccurred())
+			Eventually(cmd).Should(gbytes.Say("Initialized empty Git repository"))
 		})
 
 		AfterEach(func() {
 			if cleanup {
 				destroyApp(appName)
+				cmd, err := start("rm -rf .git")
+				Expect(err).NotTo(HaveOccurred())
+				Eventually(cmd).Should(gexec.Exit(0))
 			}
 		})
 
@@ -83,7 +90,7 @@ var _ = Describe("Apps", func() {
 			Eventually(sess).Should(gbytes.Say("Git remote deis added"))
 			Eventually(sess).Should(gbytes.Say("remote available at "))
 
-			sess, err = start("deis config:list")
+			sess, err = start("deis config:list -a %s", appName)
 			Expect(err).To(BeNil())
 			Eventually(sess).Should(gexec.Exit(0))
 			Eventually(sess).Should(gbytes.Say("BUILDPACK_URL"))
