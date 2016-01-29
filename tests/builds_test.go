@@ -1,11 +1,12 @@
 package tests
 
 import (
+	"time"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/onsi/gomega/gbytes"
-	"github.com/onsi/gomega/gexec"
-	"time"
+	. "github.com/onsi/gomega/gbytes"
+	. "github.com/onsi/gomega/gexec"
 )
 
 var _ = Describe("Builds", func() {
@@ -18,15 +19,15 @@ var _ = Describe("Builds", func() {
 				// This returns 404 Not found
 				cmd, err := start("deis builds:create %s -a %s", "deis/example-go:latest", appName)
 				Expect(err).NotTo(HaveOccurred())
-				Eventually(cmd, (1 * time.Minute)).Should(gexec.Exit(0))
-				Eventually(cmd).Should(gbytes.Say("Creating build... done"))
+				Eventually(cmd, (1 * time.Minute)).Should(Exit(0))
+				Eventually(cmd).Should(Say("Creating build... done"))
 			})
 
 			XIt("can list app builds", func() {
 				cmd, err := start("deis builds:list --app=%s", appName)
 				Expect(err).NotTo(HaveOccurred())
-				Eventually(cmd, (1 * time.Minute)).Should(gexec.Exit(0))
-				Eventually(cmd).Should(gbytes.Say(`[0-9a-f]{8}-([0-9a-f]{4}-){3}[0-9a-f]{12}`))
+				Eventually(cmd, (1 * time.Minute)).Should(Exit(0))
+				Eventually(cmd).Should(Say(`[0-9a-f]{8}-([0-9a-f]{4}-){3}[0-9a-f]{12}`))
 			})
 		})
 

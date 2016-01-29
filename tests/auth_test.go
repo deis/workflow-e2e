@@ -3,8 +3,8 @@ package tests
 import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/onsi/gomega/gbytes"
-	"github.com/onsi/gomega/gexec"
+	. "github.com/onsi/gomega/gbytes"
+	. "github.com/onsi/gomega/gexec"
 )
 
 var _ = Describe("Auth", func() {
@@ -16,8 +16,8 @@ var _ = Describe("Auth", func() {
 		It("won't print the current user", func() {
 			sess, err := start("deis auth:whoami")
 			Expect(err).To(BeNil())
-			Eventually(sess).Should(gexec.Exit(1))
-			Eventually(sess.Err).Should(gbytes.Say("Not logged in"))
+			Eventually(sess).Should(Exit(1))
+			Eventually(sess.Err).Should(Say("Not logged in"))
 		})
 	})
 
@@ -36,15 +36,15 @@ var _ = Describe("Auth", func() {
 		It("prints the current user", func() {
 			sess, err := start("deis auth:whoami")
 			Expect(err).To(BeNil())
-			Eventually(sess).Should(gexec.Exit(0))
-			Eventually(sess).Should(gbytes.Say("You are %s", testUser))
+			Eventually(sess).Should(Exit(0))
+			Eventually(sess).Should(Say("You are %s", testUser))
 		})
 
 		It("regenerates the token for the current user", func() {
 			sess, err := start("deis auth:regenerate")
 			Expect(err).To(BeNil())
-			Eventually(sess).Should(gexec.Exit(0))
-			Eventually(sess).Should(gbytes.Say("Token Regenerated"))
+			Eventually(sess).Should(Exit(0))
+			Eventually(sess).Should(Say("Token Regenerated"))
 		})
 	})
 
