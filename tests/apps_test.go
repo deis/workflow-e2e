@@ -1,6 +1,8 @@
 package tests
 
 import (
+	"fmt"
+	"os"
 	"time"
 
 	. "github.com/onsi/ginkgo"
@@ -31,12 +33,12 @@ var _ = Describe("Apps", func() {
 			Eventually(sess.Err).Should(Say("Not found."))
 		})
 
-		// TODO: this currently returns "Error: json: cannot unmarshal object into Go value of type []interface {}"
-		XIt("can't run a command in the app environment", func() {
+		It("can't run a command in the app environment", func() {
 			sess, err := start("deis apps:run echo Hello, 世界")
 			Expect(err).To(BeNil())
+			Eventually(sess).Should(Say("Running 'echo Hello, 世界'..."))
+			Eventually(sess.Err).Should(Say("Not found."))
 			Eventually(sess).ShouldNot(Exit(0))
-			Eventually(sess).Should(Say("Not found."))
 		})
 
 	})
@@ -101,18 +103,21 @@ var _ = Describe("Apps", func() {
 		var appName string
 
 		BeforeEach(func() {
+			os.Chdir("example-go")
 			appName = getRandAppName()
 			cmd := createApp(appName)
 			Eventually(cmd).Should(SatisfyAll(
 				Say("Git remote deis added"),
 				Say("remote available at ")))
 
+			fmt.Println(gitSSH)
 			cmd, err := start("GIT_SSH=%s git push deis master", gitSSH)
 			Expect(err).NotTo(HaveOccurred())
 			Eventually(cmd.Err, "2m").Should(Say("done, %s:v2 deployed to Deis", appName))
 		})
 
 		AfterEach(func() {
+			defer os.Chdir("..")
 			destroyApp(appName)
 		})
 
