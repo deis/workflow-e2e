@@ -6,8 +6,8 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/onsi/gomega/gbytes"
-	"github.com/onsi/gomega/gexec"
+	. "github.com/onsi/gomega/gbytes"
+	. "github.com/onsi/gomega/gexec"
 )
 
 var _ = Describe("Healthcheck", func() {
@@ -18,22 +18,22 @@ var _ = Describe("Healthcheck", func() {
 			login(url, testUser, testPassword)
 			sess, err := start("deis apps:create %s", appName)
 			Expect(err).To(BeNil())
-			Eventually(sess).Should(gexec.Exit(0))
-			Eventually(sess).Should(gbytes.Say("Creating Application... done, created %s", appName))
+			Eventually(sess).Should(Exit(0))
+			Eventually(sess).Should(Say("Creating Application... done, created %s", appName))
 			sess, err = start("deis pull deis/example-go -a %s", appName)
 			Expect(err).To(BeNil())
-			Eventually(sess).Should(gexec.Exit(0))
-			Eventually(sess).Should(gbytes.Say("Creating build... done"))
+			Eventually(sess).Should(Exit(0))
+			Eventually(sess).Should(Say("Creating build... done"))
 		})
 
 		// destroy the app
 		AfterEach(func() {
 			sess, err := start("deis apps:destroy --confirm=%s", appName)
 			Expect(err).To(BeNil())
-			Eventually(sess).Should(gexec.Exit(0))
-			Eventually(sess).Should(gbytes.Say("Destroying %s...", appName))
-			Eventually(sess).Should(gbytes.Say("done in "))
-			Eventually(sess).Should(gbytes.Say("Git remote deis removed"))
+			Eventually(sess).Should(Exit(0))
+			Eventually(sess).Should(Say("Destroying %s...", appName))
+			Eventually(sess).Should(Say("done in "))
+			Eventually(sess).Should(Say("Git remote deis removed"))
 		})
 
 		It("can stay running during a scale event", func() {
@@ -48,7 +48,7 @@ var _ = Describe("Healthcheck", func() {
 				for range stopCh {
 					sess, err := start("deis ps:scale web=4 -a %s", appName)
 					Expect(err).To(BeNil())
-					Eventually(sess).Should(gexec.Exit(0))
+					Eventually(sess).Should(Exit(0))
 				}
 				close(doneCh)
 			}()
