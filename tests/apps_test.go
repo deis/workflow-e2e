@@ -1,7 +1,6 @@
 package tests
 
 import (
-	"fmt"
 	"os"
 	"time"
 
@@ -109,11 +108,11 @@ var _ = Describe("Apps", func() {
 			Eventually(cmd).Should(SatisfyAll(
 				Say("Git remote deis added"),
 				Say("remote available at ")))
-
-			fmt.Println(gitSSH)
+			Eventually(cmd).Should(Exit(0))
 			cmd, err := start("GIT_SSH=%s git push deis master", gitSSH)
 			Expect(err).NotTo(HaveOccurred())
-			Eventually(cmd.Err, "2m").Should(Say("done, %s:v2 deployed to Deis", appName))
+			Eventually(cmd.Err, "2m").Should(Say("Done, %s:v2 deployed to Deis", appName))
+			Eventually(cmd).Should(Exit(0))
 		})
 
 		AfterEach(func() {
@@ -122,14 +121,14 @@ var _ = Describe("Apps", func() {
 		})
 
 		It("can't create an existing app", func() {
-			output, err := execute("deis apps:create %s", appName)
-			Expect(err).To(HaveOccurred(), output)
-
-			Expect(output).To(ContainSubstring("This field must be unique"))
+			sess, err := start("deis apps:create %s", appName)
+			Expect(err).NotTo(HaveOccurred())
+			Eventually(sess.Err).Should(Say("App with this id already exists."))
+			Eventually(sess).ShouldNot(Exit(0))
 		})
 
 		It("can get app info", func() {
-			sess, err := start("deis info")
+			sess, err := start("deis info -a %s", appName)
 			Expect(err).NotTo(HaveOccurred())
 
 			Eventually(sess).Should(Say("=== %s Processes", appName))
@@ -137,6 +136,7 @@ var _ = Describe("Apps", func() {
 				Say("web.1 initialized"),
 				Say("web.1 up")))
 			Eventually(sess).Should(Say("=== %s Domains", appName))
+			Eventually(sess).Should(Exit(0))
 		})
 
 		// V broken
