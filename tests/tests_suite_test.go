@@ -84,14 +84,15 @@ var _ = BeforeSuite(func() {
 
 	keyPath = createKey(keyName)
 
+	// Write out a git+ssh wrapper file to avoid known_hosts warnings
 	gitSSH = path.Join(sshDir, "git-ssh")
-
-	sshFlags := ""
+	sshFlags := "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
 	if debug {
 		sshFlags = sshFlags + " -v"
 	}
-
-	ioutil.WriteFile(gitSSH, []byte(fmt.Sprintf("#!/bin/sh\nexec /usr/bin/ssh %s -i %s \"$@\"", sshFlags, keyPath)), 0777)
+	ioutil.WriteFile(gitSSH, []byte(fmt.Sprintf(
+		"#!/bin/sh\nSSH_ORIGINAL_COMMAND=\"ssh $@\"\nexec /usr/bin/ssh %s -i %s \"$@\"\n",
+		sshFlags, keyPath)), 0777)
 
 	sess, err = start("deis keys:add %s.pub", keyPath)
 	Expect(err).To(BeNil())
