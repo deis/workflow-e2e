@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -19,10 +20,8 @@ import (
 )
 
 const (
-	deisWorkflowServiceHost = "DEIS_WORKFLOW_SERVICE_HOST"
-	deisWorkflowServicePort = "DEIS_WORKFLOW_SERVICE_PORT"
-	deisRouterServiceHost   = "DEIS_ROUTER_SERVICE_HOST"
-	deisRouterServicePort   = "DEIS_ROUTER_SERVICE_PORT"
+	deisRouterServiceHost = "DEIS_ROUTER_SERVICE_HOST"
+	deisRouterServicePort = "DEIS_ROUTER_SERVICE_PORT"
 )
 
 var (
@@ -84,14 +83,15 @@ var _ = BeforeSuite(func() {
 
 	keyPath = createKey(keyName)
 
+	// Write out a git+ssh wrapper file to avoid known_hosts warnings
 	gitSSH = path.Join(sshDir, "git-ssh")
-
-	sshFlags := ""
+	sshFlags := "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
 	if debug {
 		sshFlags = sshFlags + " -v"
 	}
-
-	ioutil.WriteFile(gitSSH, []byte(fmt.Sprintf("#!/bin/sh\nexec /usr/bin/ssh %s -i %s \"$@\"", sshFlags, keyPath)), 0777)
+	ioutil.WriteFile(gitSSH, []byte(fmt.Sprintf(
+		"#!/bin/sh\nSSH_ORIGINAL_COMMAND=\"ssh $@\"\nexec /usr/bin/ssh %s -i %s \"$@\"\n",
+		sshFlags, keyPath)), 0777)
 
 	sess, err = start("deis keys:add %s.pub", keyPath)
 	Expect(err).To(BeNil())
@@ -250,14 +250,23 @@ func createKey(name string) string {
 }
 
 func getController() string {
-	host := os.Getenv(deisWorkflowServiceHost)
+	host := os.Getenv(deisRouterServiceHost)
 	if host == "" {
-		panicStr := fmt.Sprintf(`Set %s to the workflow controller hostname for tests, such as:
+		panicStr := fmt.Sprintf(`Set the router host and port for tests, such as:
 
-$ %s=deis.10.245.1.3.xip.io make test-integration`, deisWorkflowServiceHost, deisWorkflowServiceHost)
+$ %s=192.0.2.10 %s=31182 make test-integration`, deisRouterServiceHost, deisRouterServicePort)
 		panic(panicStr)
 	}
-	port := os.Getenv(deisWorkflowServicePort)
+	// Make a xip.io URL if DEIS_ROUTER_SERVICE_HOST is an IP V4 address
+	ipv4Regex := `^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$`
+	matched, err := regexp.MatchString(ipv4Regex, host)
+	if err != nil {
+		panic(err)
+	}
+	if matched {
+		host = fmt.Sprintf("deis.%s.xip.io", host)
+	}
+	port := os.Getenv(deisRouterServicePort)
 	switch port {
 	case "443":
 		return "https://" + host
