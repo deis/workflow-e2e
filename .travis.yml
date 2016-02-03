@@ -1,19 +1,29 @@
 language: generic
 branches:
   only:
-    - master
+  - master
 cache:
   directories:
-    - vendor
+  - vendor
 sudo: required
 services:
-  - docker
+- docker
 install:
-  - make bootstrap
+- make bootstrap
 script:
-  - make build
+- make build
 deploy:
-  - provider: script
-    script: _scripts/deploy.sh
-    on:
-      branch: master
+- provider: script
+  script: _scripts/deploy.sh
+  on:
+    branch: master
+notifications:
+  webhooks:
+    urls:
+      - https://ci.deis.io/job/deis-v2-e2e/build?token=${JENKINS_TOKEN}
+    on_success: always
+    on_failure: never
+    on_start: never
+env:
+  global:
+    - secure: "YtfTGxobdyYAX5j9UZHxPuBR8ssVxjiLLH9LNuT6mdmTtfhKJ/v9UF2P+S73h/oxrZItv83rURTc5CE7ZcFzpP2PoVlPrwrZY1ONSdo4AdiIfCua9UhC2QoLBr37u17wU3QnxBpS3qgfD7BTkCTsGIW0T/nLrYtvFE32UhXWHlUwpqGXyEk9AZnVls8Jc+aiW1xD7wUv45TUA4w+UhNxiIFaB9g+pdlasCf9f2KeupY6MqHtCxz3keSygPf0bEdVdtY0+5BmM7cH8orIRbRULKb0qPtuep8ZAfRIc7r/o1fD9wlQ0JQCKxGNsfkum7M3TqmJx5j/kNmIRcpv9/abd6CA41Kpy9BbMt6Htn9PgwvpmjoL9FJzdLGqwoOiLcG/yDMI0aR0CJQDTG0gFTo/5PA2iBxs8FiXDhgvBDXDBFHmYXsMHQjZM52BHY9dNTsYBvi3SYmVmrgV04zk/j7Y0D/5fb+V4vjiApuUVL/n9vKzXD8ILgV+gtKrJsrCg4KW2LiwrPzhEsLFuthEda9CPWzxWQGoeWTUWvpIATPjrRefVVZ8xIpChyCizcidkipbnm6pxedEcqGOIX9fmGr41zbz+T664ZX3wlX95K49Tc4IsEzUo7auuKkdneYh0CVdgHk+PjywDSIuPdha8XAlqnJZzqrfvri6UCA+fRWqD+c="
