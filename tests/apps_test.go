@@ -40,6 +40,13 @@ var _ = Describe("Apps", func() {
 			Eventually(sess).ShouldNot(Exit(0))
 		})
 
+		It("can't open a bogus app URL", func() {
+			sess, err := start("deis open -a %s", getRandAppName())
+			Expect(err).To(BeNil())
+			Eventually(sess).Should(Exit(1))
+			Eventually(sess.Err).Should(Say("404 Not Found"))
+		})
+
 	})
 
 	Context("when creating an app", func() {
@@ -154,13 +161,6 @@ var _ = Describe("Apps", func() {
 			sess, err := start("deis open")
 			Expect(err).To(BeNil())
 			Eventually(sess).Should(Exit(0))
-		})
-
-		// TODO: be more useful
-		XIt("can't open a bogus app URL", func() {
-			cmd, err := start("deis open -a %s", getRandAppName())
-			Expect(err).To(HaveOccurred())
-			Eventually(cmd).Should(Say("404 Not found"))
 		})
 
 		// V broken
