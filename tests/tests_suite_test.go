@@ -121,14 +121,10 @@ var _ = AfterEach(func() {
 })
 
 var _ = AfterSuite(func() {
-	cancelUserSess, cancelUserErr := cancelSess(url, testUser, testPassword)
-	cancelAdminSess, cancelAdminErr := cancelSess(url, testAdminUser, testAdminPassword)
+	os.Chdir(testHome)
 
-	Expect(cancelUserErr).To(BeNil())
-	Expect(cancelAdminErr).To(BeNil())
-
-	cancelUserSess.Wait(10 * time.Second)
-	cancelAdminSess.Wait(10 * time.Second)
+	cancel(url, testUser, testPassword)
+	cancel(url, testAdminUser, testAdminPassword)
 
 	os.RemoveAll(fmt.Sprintf("~/.ssh/%s*", keyName))
 
@@ -163,16 +159,6 @@ func registerOrLogin(url, username, password, email string) {
 	}
 }
 
-func cancelSess(url, user, pass string) (*Session, error) {
-	lgSess, err := loginSess(url, user, pass)
-	if err != nil {
-		return nil, err
-	}
-	lgSess.Wait()
-	cmd := exec.Command("deis", "auth:cancel", fmt.Sprintf("--username=%s", user), fmt.Sprintf("--password=%s", pass), "--yes")
-	return Start(cmd, GinkgoWriter, GinkgoWriter)
-}
-
 func cancel(url, username, password string) {
 	// log in to the account
 	login(url, username, password)
@@ -182,11 +168,6 @@ func cancel(url, username, password string) {
 	Expect(err).To(BeNil())
 	Eventually(sess).Should(Exit(0))
 	Eventually(sess).Should(Say("Account cancelled"))
-}
-
-func loginSess(url, user, pass string) (*Session, error) {
-	cmd := exec.Command("deis", "login", url, fmt.Sprintf("--username=%s", user), fmt.Sprintf("--password=%s", pass))
-	return Start(cmd, GinkgoWriter, GinkgoWriter)
 }
 
 func login(url, user, password string) {
