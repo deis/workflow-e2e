@@ -19,6 +19,11 @@ import (
 	. "github.com/onsi/gomega/gexec"
 )
 
+type Cmd struct {
+	Env               []string
+	CommandLineString string
+}
+
 const (
 	deisRouterServiceHost = "DEIS_ROUTER_SERVICE_HOST"
 	deisRouterServicePort = "DEIS_ROUTER_SERVICE_PORT"
@@ -207,11 +212,13 @@ func execute(cmdLine string, args ...interface{}) (string, error) {
 }
 
 func start(cmdLine string, args ...interface{}) (*Session, error) {
-	cmdStr := fmt.Sprintf(cmdLine, args...)
-	if debug {
-		fmt.Println(cmdStr)
-	}
-	cmd := exec.Command("/bin/sh", "-c", cmdStr)
+	ourCommand := Cmd{Env: os.Environ(), CommandLineString: fmt.Sprintf(cmdLine, args...)}
+	return startCmd(ourCommand)
+}
+
+func startCmd(command Cmd) (*Session, error) {
+	cmd := exec.Command("/bin/sh", "-c", command.CommandLineString)
+	cmd.Env = command.Env
 	return Start(cmd, GinkgoWriter, GinkgoWriter)
 }
 

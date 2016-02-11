@@ -1,20 +1,27 @@
 package tests
 
 import (
+	"io/ioutil"
 	"os"
+	"runtime"
+	"strings"
 	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gbytes"
 	. "github.com/onsi/gomega/gexec"
+
+	"github.com/deis/workflow-e2e/shims"
 )
 
 var _ = Describe("Apps", func() {
 	var appName string
+	var appURL string
 
 	BeforeEach(func() {
 		appName = getRandAppName()
+		appURL = strings.Replace(url, "deis", appName, 1)
 	})
 
 	Context("with no app", func() {
@@ -137,7 +144,6 @@ var _ = Describe("Apps", func() {
 		It("can get app info", func() {
 			sess, err := start("deis info -a %s", appName)
 			Expect(err).NotTo(HaveOccurred())
-
 			Eventually(sess).Should(Say("=== %s Processes", appName))
 			Eventually(sess).Should(SatisfyAny(
 				Say("web.1 initialized"),
@@ -156,11 +162,30 @@ var _ = Describe("Apps", func() {
 				Say("%s\\[deis-controller\\]\\: %s scaled containers", appName, testUser)))
 		})
 
-		// TODO: how to test "deis open" which spawns a browser?
 		XIt("can open the app's URL", func() {
-			sess, err := start("deis open")
+			// the underlying open utility 'deis open' looks for
+			toShim := "open" //darwin
+			if runtime.GOOS == "linux" {
+				toShim = "xdg-open"
+			}
+			myShim, err := shims.CreateSystemShim(toShim)
+			if err != nil {
+				panic(err)
+			}
+			defer shims.RemoveShim(myShim)
+
+			// create custom env with custom/prefixed PATH value
+			env := shims.PrependPath(os.Environ(), os.TempDir())
+
+			// invoke functionality under test
+			sess, err := startCmd(Cmd{Env: env, CommandLineString: "deis open"})
 			Expect(err).To(BeNil())
 			Eventually(sess).Should(Exit(0))
+
+			// check shim output
+			output, err := ioutil.ReadFile(myShim.OutFile.Name())
+			Expect(err).NotTo(HaveOccurred())
+			Expect(string(output)).To(Equal(appURL))
 		})
 
 		// V broken

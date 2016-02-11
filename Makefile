@@ -2,8 +2,8 @@ export GO15VENDOREXPERIMENT=1
 
 SHORT_NAME := deis-e2e
 
-SRC_PATH := /go/src/github.com/deis/workflow/_tests
-DEV_IMG := quay.io/deis/go-dev:0.4.0
+SRC_PATH := /go/src/github.com/deis/workflow-e2e
+DEV_IMG := quay.io/deis/go-dev:0.5.0
 
 RUN_CMD := docker run --rm -e DEIS_ROUTER_SERVICE_HOST=${DEIS_ROUTER_SERVICE_HOST} -e DEIS_ROUTER_SERVICE_PORT=${DEIS_ROUTER_SERVICE_PORT} -v ${CURDIR}:${SRC_PATH} -w ${SRC_PATH} ${DEV_IMG}
 DEV_CMD := docker run --rm -e GO15VENDOREXPERIMENT=1 -v ${CURDIR}:${SRC_PATH} -w ${SRC_PATH} ${DEV_IMG}
