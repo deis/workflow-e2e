@@ -1,10 +1,35 @@
 hash: 2cb2c8845b0614257fc1e08274974e33721dd5b0cda08087d07f9cc6d854e04c
-updated: 2016-02-11T11:41:30.014214173-07:00
+updated: 2016-02-18T15:08:50.130126674-08:00
 imports:
-- name: github.com/golang/protobuf
-  version: 68415e7123da32b07eab49c96d2c4d6158360e9b
 - name: github.com/onsi/ginkgo
-  version: e43390e35a4a88f3f95d5ddf9055efb7a1170469
+  version: be259a120bdbe4dd5a3352edac586871aa8589e8
+  subpackages:
+  - config
+  - internal/codelocation
+  - internal/failer
+  - internal/remote
+  - internal/suite
+  - internal/testingtproxy
+  - internal/writer
+  - reporters
+  - reporters/stenographer
+  - types
+  - internal/containernode
+  - internal/leafnodes
+  - internal/spec
+  - internal/specrunner
 - name: github.com/onsi/gomega
-  version: 0fe204460da2c8fa1babcaac196e694de8f1aaa1
+  version: c72df929b80ef4930aaa75d5e486887ff2f3e06a
+  subpackages:
+  - internal/assertion
+  - internal/asyncassertion
+  - internal/testingtsupport
+  - matchers
+  - types
+  - internal/oraclematcher
+  - format
+  - matchers/support/goraph/bipartitegraph
+  - matchers/support/goraph/edge
+  - matchers/support/goraph/node
+  - matchers/support/goraph/util
 devImports: []
