@@ -36,7 +36,7 @@ var _ = Describe("Apps", func() {
 			sess, err := start("deis logs -a %s", appName)
 			Expect(err).To(BeNil())
 			Eventually(sess).Should(Exit(1))
-			Eventually(sess.Err).Should(Say("Not found."))
+			Eventually(sess.Err).Should(Say(`Error: There are currently no log messages. Please check the following things:`))
 		})
 
 		It("can't run a command in the app environment", func() {
