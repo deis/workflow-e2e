@@ -17,11 +17,9 @@ import (
 
 var _ = Describe("Apps", func() {
 	var appName string
-	var appURL string
 
 	BeforeEach(func() {
 		appName = getRandAppName()
-		appURL = strings.Replace(url, "deis", appName, 1)
 	})
 
 	Context("with no app", func() {
@@ -114,10 +112,12 @@ var _ = Describe("Apps", func() {
 
 	Context("with a deployed app", func() {
 		var appName string
+		var appURL string
 
 		BeforeEach(func() {
 			os.Chdir("example-go")
 			appName = getRandAppName()
+			appURL = strings.Replace(url, "deis", appName, 1)
 			cmd := createApp(appName)
 			Eventually(cmd).Should(SatisfyAll(
 				Say("Git remote deis added"),
@@ -162,7 +162,7 @@ var _ = Describe("Apps", func() {
 				Say("%s\\[deis-controller\\]\\: %s scaled containers", appName, testUser)))
 		})
 
-		XIt("can open the app's URL", func() {
+		It("can open the app's URL", func() {
 			// the underlying open utility 'deis open' looks for
 			toShim := "open" //darwin
 			if runtime.GOOS == "linux" {
@@ -185,7 +185,7 @@ var _ = Describe("Apps", func() {
 			// check shim output
 			output, err := ioutil.ReadFile(myShim.OutFile.Name())
 			Expect(err).NotTo(HaveOccurred())
-			Expect(string(output)).To(Equal(appURL))
+			Expect(strings.TrimSpace(string(output))).To(Equal(appURL))
 		})
 
 		// V broken
