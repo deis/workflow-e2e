@@ -23,14 +23,14 @@ func CreateSystemShim(toShim string) (Shim, error) {
 	// create shim file
 	shimLogic := []byte(fmt.Sprintf("#!/bin/sh\necho $@ > %s", outFile.Name()))
 	shimFileName := fmt.Sprintf("%s/%s", tempDir, toShim)
-	shimFile, err := os.Create(shimFileName)
+	err = ioutil.WriteFile(shimFileName, shimLogic, 0777)
 	if err != nil {
 		return Shim{}, err
 	}
-	if _, err = shimFile.Write(shimLogic); err != nil {
+	shimFile, err := os.Open(shimFileName)
+	if err != nil {
 		return Shim{}, err
 	}
-	shimFile.Chmod(0777)
 
 	return Shim{OutFile: outFile, ShimFile: shimFile}, nil
 }
