@@ -2,6 +2,7 @@ package tests
 
 import (
 	"fmt"
+	"io"
 	"io/ioutil"
 	"math/rand"
 	neturl "net/url"
@@ -219,6 +220,7 @@ func start(cmdLine string, args ...interface{}) (*Session, error) {
 func startCmd(command Cmd) (*Session, error) {
 	cmd := exec.Command("/bin/sh", "-c", command.CommandLineString)
 	cmd.Env = command.Env
+	io.WriteString(GinkgoWriter, fmt.Sprintf("$ %s\n", command.CommandLineString))
 	return Start(cmd, GinkgoWriter, GinkgoWriter)
 }
 
