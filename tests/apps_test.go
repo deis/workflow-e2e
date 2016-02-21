@@ -139,8 +139,7 @@ var _ = Describe("Apps", func() {
 			Eventually(sess).Should(Say(`id:\s*%s`, testApp.Name))
 
 			Eventually(sess).Should(Say("=== %s Processes", testApp.Name))
-			// TODO: use mboersma's forthcoming package-level regex to match "deis ps" output below
-			Eventually(sess).Should(Say(`%s-v\d-[\w-]+ up \(v\d\)`, testApp.Name))
+			Eventually(sess).Should(Say(procsRegexp, testApp.Name))
 
 			Eventually(sess).Should(Say("=== %s Domains", testApp.Name))
 			Eventually(sess).Should(Say("%s", testApp.Name))
