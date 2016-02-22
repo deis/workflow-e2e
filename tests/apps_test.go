@@ -144,9 +144,18 @@ var _ = Describe("Apps", func() {
 		It("can get app info", func() {
 			sess, err := start("deis info -a %s", appName)
 			Expect(err).NotTo(HaveOccurred())
+			Eventually(sess).Should(Say("=== %s Application", appName))
+			Eventually(sess).Should(Say(`uuid:\s*[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}`))
+			Eventually(sess).Should(Say(`url:\s*%s`, strings.Replace(appURL, "http://", "", 1)))
+			Eventually(sess).Should(Say(`owner:\s*%s`, testUser))
+			Eventually(sess).Should(Say(`id:\s*%s`, appName))
+
 			Eventually(sess).Should(Say("=== %s Processes", appName))
+			// TODO: use mboersma's forthcoming package-level regex to match "deis ps" output below
 			Eventually(sess).Should(Say(`%s-v\d-[\w-]+ up \(v\d\)`, appName))
+
 			Eventually(sess).Should(Say("=== %s Domains", appName))
+			Eventually(sess).Should(Say("%s", appName))
 			Eventually(sess).Should(Exit(0))
 		})
 
