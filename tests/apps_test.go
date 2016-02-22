@@ -145,9 +145,7 @@ var _ = Describe("Apps", func() {
 			sess, err := start("deis info -a %s", appName)
 			Expect(err).NotTo(HaveOccurred())
 			Eventually(sess).Should(Say("=== %s Processes", appName))
-			Eventually(sess).Should(SatisfyAny(
-				Say("web.1 initialized"),
-				Say("web.1 up")))
+			Eventually(sess).Should(Say(`%s-v\d-[\w-]+ up \(v\d\)`, appName))
 			Eventually(sess).Should(Say("=== %s Domains", appName))
 			Eventually(sess).Should(Exit(0))
 		})
