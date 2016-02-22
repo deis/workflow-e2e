@@ -169,8 +169,20 @@ func cancel(url, username, password string) {
 	// log in to the account
 	login(url, username, password)
 
+	// remove any existing test-* apps
+	sess, err := start("deis apps")
+	Expect(err).To(BeNil())
+	Eventually(sess).Should(Exit(0))
+	re := regexp.MustCompile("test-.*")
+	for _, app := range re.FindAll(sess.Out.Contents(), -1) {
+		sess, err = start("deis destroy --app=%s --confirm=%s", app, app)
+		Expect(err).To(BeNil())
+		Eventually(sess).Should(Say("Destroying %s...", app))
+		Eventually(sess).Should(Exit(0))
+	}
+
 	// cancel the account
-	sess, err := start("deis auth:cancel --username=%s --password=%s --yes", username, password)
+	sess, err = start("deis auth:cancel --username=%s --password=%s --yes", username, password)
 	Expect(err).To(BeNil())
 	Eventually(sess).Should(Exit(0))
 	Eventually(sess).Should(Say("Account cancelled"))
