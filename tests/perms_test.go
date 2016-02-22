@@ -1,11 +1,26 @@
 package tests
 
 import (
+	"os"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	. "github.com/onsi/gomega/gbytes"
+	. "github.com/onsi/gomega/gexec"
 )
 
 var _ = Describe("Perms", func() {
+	var testApp App
+
+	BeforeEach(func() {
+		testApp = deployApp("example-go")
+	})
+
+	AfterEach(func() {
+		defer os.Chdir("..")
+		destroyApp(testApp)
+	})
+
 	Context("when logged in as an admin user", func() {
 		BeforeEach(func() {
 			login(url, testAdminUser, testAdminPassword)
@@ -34,12 +49,26 @@ var _ = Describe("Perms", func() {
 			Expect(output).NotTo(ContainSubstring(testUser))
 		})
 
-		// TODO: need an app already deployed--do this in BeforeSuite
-		XIt("can create, list, and delete app permissions", func() {
-			// "deis perms:create %s --app=%s", user, app
-			// "deis perms:list --app=%s", app
-			// "deis perms:delete %s --app=%s", user, app
-			// "deis perms:list --app=%s", app
+		It("can create, list, and delete app permissions", func() {
+			sess, err := start("deis perms:create %s --app=%s", testUser, testApp.Name)
+			Expect(err).NotTo(HaveOccurred())
+			Eventually(sess).Should(Say("Adding %s to %s collaborators... done\n", testUser, testApp.Name))
+
+			sess, err = start("deis perms:list --app=%s", testApp.Name)
+			Expect(err).NotTo(HaveOccurred())
+			Eventually(sess).Should(Say("=== %s's Users", testApp.Name))
+			Eventually(sess).Should(Say("%s", testUser))
+
+			sess, err = start("deis perms:delete %s --app=%s", testUser, testApp.Name)
+			Expect(err).NotTo(HaveOccurred())
+			Eventually(sess).Should(Say("Removing %s from %s collaborators... done", testUser, testApp.Name))
+
+			sess, err = start("deis perms:list --app=%s", testApp.Name)
+			Expect(err).NotTo(HaveOccurred())
+			Eventually(sess).Should(Say("=== %s's Users", testApp.Name))
+			Eventually(sess).ShouldNot(Say("%s", testUser))
+
+			Eventually(sess).Should(Exit(0))
 		})
 	})
 
@@ -59,12 +88,26 @@ var _ = Describe("Perms", func() {
 			Expect(output).To(ContainSubstring("403 Forbidden"))
 		})
 
-		// TODO: need an app already deployed--do this in BeforeSuite
-		XIt("can create, list, and delete app permissions", func() {
-			// "deis perms:create %s --app=%s", user, app
-			// "deis perms:list --app=%s", app
-			// "deis perms:delete %s --app=%s", user, app
-			// "deis perms:list --app=%s", app
+		It("can create, list, and delete app permissions", func() {
+			sess, err := start("deis perms:create %s --app=%s", testUser, testApp.Name)
+			Expect(err).NotTo(HaveOccurred())
+			Eventually(sess).Should(Say("Adding %s to %s collaborators... done\n", testUser, testApp.Name))
+
+			sess, err = start("deis perms:list --app=%s", testApp.Name)
+			Expect(err).NotTo(HaveOccurred())
+			Eventually(sess).Should(Say("=== %s's Users", testApp.Name))
+			Eventually(sess).Should(Say("%s", testUser))
+
+			sess, err = start("deis perms:delete %s --app=%s", testUser, testApp.Name)
+			Expect(err).NotTo(HaveOccurred())
+			Eventually(sess).Should(Say("Removing %s from %s collaborators... done", testUser, testApp.Name))
+
+			sess, err = start("deis perms:list --app=%s", testApp.Name)
+			Expect(err).NotTo(HaveOccurred())
+			Eventually(sess).Should(Say("=== %s's Users", testApp.Name))
+			Eventually(sess).ShouldNot(Say("%s", testUser))
+
+			Eventually(sess).Should(Exit(0))
 		})
 	})
 })
