@@ -25,6 +25,11 @@ type Cmd struct {
 	CommandLineString string
 }
 
+type App struct {
+	Name string
+	URL  string
+}
+
 const (
 	deisRouterServiceHost = "DEIS_ROUTER_SERVICE_HOST"
 	deisRouterServicePort = "DEIS_ROUTER_SERVICE_PORT"
@@ -306,13 +311,32 @@ func createApp(name string) *Session {
 	return cmd
 }
 
-func destroyApp(name string) *Session {
-	cmd, err := start("deis apps:destroy --app=%s --confirm=%s", name, name)
+func destroyApp(app App) *Session {
+	cmd, err := start("deis apps:destroy --app=%s --confirm=%s", app.Name, app.Name)
 	Expect(err).NotTo(HaveOccurred())
 	Eventually(cmd).Should(Exit(0))
 	Eventually(cmd).Should(SatisfyAll(
-		Say("Destroying %s...", name),
+		Say("Destroying %s...", app.Name),
 		Say(`done in `)))
 
 	return cmd
+}
+
+func deployApp(name string) App {
+	os.Chdir(name)
+	appName := getRandAppName()
+	app := App{Name: appName, URL: strings.Replace(url, "deis", appName, 1)}
+
+	cmd := createApp(app.Name)
+	Eventually(cmd).Should(SatisfyAll(
+		Say("Git remote deis added"),
+		Say("remote available at ")))
+	Eventually(cmd).Should(Exit(0))
+
+	cmd, err := start("GIT_SSH=%s git push deis master", gitSSH)
+	Expect(err).NotTo(HaveOccurred())
+	Eventually(cmd.Err, "2m").Should(Say("Done, %s:v2 deployed to Deis", app.Name))
+	Eventually(cmd).Should(Exit(0))
+
+	return app
 }

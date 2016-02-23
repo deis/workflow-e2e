@@ -16,22 +16,22 @@ import (
 )
 
 var _ = Describe("Apps", func() {
-	var appName string
+	var testApp App
 
 	BeforeEach(func() {
-		appName = getRandAppName()
+		testApp.Name = getRandAppName()
 	})
 
 	Context("with no app", func() {
 
 		It("can't get app info", func() {
-			sess, _ := start("deis info -a %s", appName)
+			sess, _ := start("deis info -a %s", testApp.Name)
 			Eventually(sess).Should(Exit(1))
 			Eventually(sess.Err).Should(Say("Not found."))
 		})
 
 		It("can't get app logs", func() {
-			sess, err := start("deis logs -a %s", appName)
+			sess, err := start("deis logs -a %s", testApp.Name)
 			Expect(err).To(BeNil())
 			Eventually(sess).Should(Exit(1))
 			Eventually(sess.Err).Should(Say(`Error: There are currently no log messages. Please check the following things:`))
@@ -59,7 +59,7 @@ var _ = Describe("Apps", func() {
 
 		BeforeEach(func() {
 			cleanup = true
-			appName = getRandAppName()
+			testApp.Name = getRandAppName()
 			cmd, err := start("git init")
 			Expect(err).NotTo(HaveOccurred())
 			Eventually(cmd).Should(Say("Initialized empty Git repository"))
@@ -67,7 +67,7 @@ var _ = Describe("Apps", func() {
 
 		AfterEach(func() {
 			if cleanup {
-				destroyApp(appName)
+				destroyApp(testApp)
 				cmd, err := start("rm -rf .git")
 				Expect(err).NotTo(HaveOccurred())
 				Eventually(cmd).Should(Exit(0))
@@ -75,35 +75,35 @@ var _ = Describe("Apps", func() {
 		})
 
 		It("creates an app with a git remote", func() {
-			cmd, err := start("deis apps:create %s", appName)
+			cmd, err := start("deis apps:create %s", testApp.Name)
 			Expect(err).NotTo(HaveOccurred())
-			Eventually(cmd).Should(Say("created %s", appName))
+			Eventually(cmd).Should(Say("created %s", testApp.Name))
 			Eventually(cmd).Should(Say(`Git remote deis added`))
 			Eventually(cmd).Should(Say(`remote available at `))
 		})
 
 		It("creates an app with no git remote", func() {
-			cmd, err := start("deis apps:create %s --no-remote", appName)
+			cmd, err := start("deis apps:create %s --no-remote", testApp.Name)
 			Expect(err).NotTo(HaveOccurred())
 			Eventually(cmd).Should(SatisfyAll(
-				Say("created %s", appName),
+				Say("created %s", testApp.Name),
 				Say("remote available at ")))
 			Eventually(cmd).ShouldNot(Say("Git remote deis added"))
 
 			cleanup = false
-			cmd = destroyApp(appName)
+			cmd = destroyApp(testApp)
 			Eventually(cmd).ShouldNot(Say("Git remote deis removed"))
 		})
 
 		It("creates an app with a custom buildpack", func() {
-			sess, err := start("deis apps:create %s --buildpack https://example.com", appName)
+			sess, err := start("deis apps:create %s --buildpack https://example.com", testApp.Name)
 			Expect(err).To(BeNil())
 			Eventually(sess).Should(Exit(0))
-			Eventually(sess).Should(Say("created %s", appName))
+			Eventually(sess).Should(Say("created %s", testApp.Name))
 			Eventually(sess).Should(Say("Git remote deis added"))
 			Eventually(sess).Should(Say("remote available at "))
 
-			sess, err = start("deis config:list -a %s", appName)
+			sess, err = start("deis config:list -a %s", testApp.Name)
 			Expect(err).To(BeNil())
 			Eventually(sess).Should(Exit(0))
 			Eventually(sess).Should(Say("BUILDPACK_URL"))
@@ -111,51 +111,39 @@ var _ = Describe("Apps", func() {
 	})
 
 	Context("with a deployed app", func() {
-		var appName string
-		var appURL string
+		var testApp App
 
 		BeforeEach(func() {
-			os.Chdir("example-go")
-			appName = getRandAppName()
-			appURL = strings.Replace(url, "deis", appName, 1)
-			cmd := createApp(appName)
-			Eventually(cmd).Should(SatisfyAll(
-				Say("Git remote deis added"),
-				Say("remote available at ")))
-			Eventually(cmd).Should(Exit(0))
-			cmd, err := start("GIT_SSH=%s git push deis master", gitSSH)
-			Expect(err).NotTo(HaveOccurred())
-			Eventually(cmd.Err, "2m").Should(Say("Done, %s:v2 deployed to Deis", appName))
-			Eventually(cmd).Should(Exit(0))
+			testApp = deployApp("example-go")
 		})
 
 		AfterEach(func() {
 			defer os.Chdir("..")
-			destroyApp(appName)
+			destroyApp(testApp)
 		})
 
 		It("can't create an existing app", func() {
-			sess, err := start("deis apps:create %s", appName)
+			sess, err := start("deis apps:create %s", testApp.Name)
 			Expect(err).NotTo(HaveOccurred())
 			Eventually(sess.Err).Should(Say("App with this id already exists."))
 			Eventually(sess).ShouldNot(Exit(0))
 		})
 
 		It("can get app info", func() {
-			sess, err := start("deis info -a %s", appName)
+			sess, err := start("deis info -a %s", testApp.Name)
 			Expect(err).NotTo(HaveOccurred())
-			Eventually(sess).Should(Say("=== %s Application", appName))
+			Eventually(sess).Should(Say("=== %s Application", testApp.Name))
 			Eventually(sess).Should(Say(`uuid:\s*[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}`))
-			Eventually(sess).Should(Say(`url:\s*%s`, strings.Replace(appURL, "http://", "", 1)))
+			Eventually(sess).Should(Say(`url:\s*%s`, strings.Replace(testApp.URL, "http://", "", 1)))
 			Eventually(sess).Should(Say(`owner:\s*%s`, testUser))
-			Eventually(sess).Should(Say(`id:\s*%s`, appName))
+			Eventually(sess).Should(Say(`id:\s*%s`, testApp.Name))
 
-			Eventually(sess).Should(Say("=== %s Processes", appName))
+			Eventually(sess).Should(Say("=== %s Processes", testApp.Name))
 			// TODO: use mboersma's forthcoming package-level regex to match "deis ps" output below
-			Eventually(sess).Should(Say(`%s-v\d-[\w-]+ up \(v\d\)`, appName))
+			Eventually(sess).Should(Say(`%s-v\d-[\w-]+ up \(v\d\)`, testApp.Name))
 
-			Eventually(sess).Should(Say("=== %s Domains", appName))
-			Eventually(sess).Should(Say("%s", appName))
+			Eventually(sess).Should(Say("=== %s Domains", testApp.Name))
+			Eventually(sess).Should(Say("%s", testApp.Name))
 			Eventually(sess).Should(Exit(0))
 		})
 
@@ -164,9 +152,9 @@ var _ = Describe("Apps", func() {
 			cmd, err := start("deis logs")
 			Expect(err).NotTo(HaveOccurred())
 			Eventually(cmd).Should(SatisfyAll(
-				Say("%s\\[deis-controller\\]\\: %s created initial release", appName, testUser),
-				Say("%s\\[deis-controller\\]\\: %s deployed", appName, testUser),
-				Say("%s\\[deis-controller\\]\\: %s scaled containers", appName, testUser)))
+				Say("%s\\[deis-controller\\]\\: %s created initial release", testApp.Name, testUser),
+				Say("%s\\[deis-controller\\]\\: %s deployed", testApp.Name, testUser),
+				Say("%s\\[deis-controller\\]\\: %s scaled containers", testApp.Name, testUser)))
 		})
 
 		It("can open the app's URL", func() {
@@ -192,7 +180,7 @@ var _ = Describe("Apps", func() {
 			// check shim output
 			output, err := ioutil.ReadFile(myShim.OutFile.Name())
 			Expect(err).NotTo(HaveOccurred())
-			Expect(strings.TrimSpace(string(output))).To(Equal(appURL))
+			Expect(strings.TrimSpace(string(output))).To(Equal(testApp.URL))
 		})
 
 		// V broken
