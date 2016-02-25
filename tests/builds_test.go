@@ -1,7 +1,11 @@
 package tests
 
 import (
+	"fmt"
+	"os"
 	"time"
+	"net/http"
+	"strconv"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -9,42 +13,117 @@ import (
 	. "github.com/onsi/gomega/gexec"
 )
 
+// createBuild invokes deis builds:create <image> -a <app>
+// with provided <image> on provided <app>
+// and validates that no errors have occurred and build was successful
+func createBuild(image string, testApp App) {
+	cmd, err := start("deis builds:create %s -a %s", image, testApp.Name)
+	Expect(err).NotTo(HaveOccurred())
+	Eventually(cmd).Should(Exit(0))
+	Eventually(cmd).Should(Say("Creating build..."))
+	Eventually(cmd, (30 * time.Second)).Should(Say("done"))
+}
+
 var _ = Describe("Builds", func() {
 	Context("with a logged-in user", func() {
+		var exampleRepo string
+		var exampleImage string
+		var testApp App
+
+		BeforeEach(func() {
+			exampleRepo = "example-go"
+			exampleImage = fmt.Sprintf("deis/%s:latest", exampleRepo)
+			testApp.Name = getRandAppName()
+		})
+
 		Context("with no app", func() {
-			var appName string
+			It("cannot create a build without existing app", func() {
+				cmd, err := start("deis builds:create %s -a %s", exampleImage, testApp.Name)
+				Expect(err).NotTo(HaveOccurred())
+				Eventually(cmd.Err).Should(Say("404 Not Found"))
+				Eventually(cmd).Should(Exit(1))
+			})
+		})
+
+		Context("with existing app", func() {
 
 			BeforeEach(func() {
-				appName = getRandAppName()
-				// This returns 404 Not found
-				cmd, err := start("deis builds:create %s -a %s", "deis/example-go:latest", appName)
-				Expect(err).NotTo(HaveOccurred())
-				Eventually(cmd, (1 * time.Minute)).Should(Exit(0))
-				Eventually(cmd).Should(Say("Creating build... done"))
+				gitInit()
+				cmd := createApp(testApp.Name)
+				Eventually(cmd).Should(SatisfyAll(
+					Say("Git remote deis added"),
+					Say("remote available at ")))
+				createBuild(exampleImage, testApp)
 			})
 
-			XIt("can list app builds", func() {
-				cmd, err := start("deis builds:list --app=%s", appName)
+			AfterEach(func() {
+				destroyApp(testApp)
+				gitClean()
+			})
+
+			It("can list app builds", func() {
+				cmd, err := start("deis builds:list -a %s", testApp.Name)
 				Expect(err).NotTo(HaveOccurred())
-				Eventually(cmd, (1 * time.Minute)).Should(Exit(0))
-				Eventually(cmd).Should(Say(`[0-9a-f]{8}-([0-9a-f]{4}-){3}[0-9a-f]{12}`))
+				Eventually(cmd).Should(Exit(0))
+				Eventually(cmd).Should(Say(uuidRegExp))
 			})
 		})
 
 		Context("with a deployed app", func() {
+			var curlCmd Cmd
+			var cmdRetryTimeout int
+			var procFile string
 
-			XIt("can list app builds", func() {
-				// "deis builds:list --app=%s", app
+			BeforeEach(func() {
+				cmdRetryTimeout = 10
+				cmd := createApp(testApp.Name, "--no-remote")
+				Eventually(cmd).Should(Not(Say("Git remote deis added")))
+
+				testApp = deployApp(exampleRepo)
+				procFile = fmt.Sprintf("worker: while true; do echo hi; sleep 3; done")
+
+				createBuild(exampleImage, testApp)
 			})
 
-			XIt("can create a build from an existing image (\"deis pull\")", func() {
-				// "deis builds:create %s --app=%s", image, app
-				// curl app
-				// `deis pull %s -a %s --procfile="worker: while true; do echo hi; sleep 3; done"`, image, app
-				// "deis ps:scale worker=1"
-				// "deis logs --app=%s", app
+			AfterEach(func() {
+				defer os.Chdir("..")
+				destroyApp(testApp)
+				gitClean()
+			})
+
+			It("can list app builds", func() {
+				cmd, err := start("deis builds:list -a %s", testApp.Name)
+				Expect(err).NotTo(HaveOccurred())
+				Eventually(cmd).Should(Exit(0))
+				Eventually(cmd).Should(Say(uuidRegExp))
+			})
+
+			It("can create a build from an existing image (\"deis pull\")", func() {
+				// curl app to make sure everything OK
+				curlCmd = Cmd{CommandLineString: fmt.Sprintf(`curl -sL -w "%%{http_code}\\n" "%s" -o /dev/null`, testApp.URL)}
+				Eventually(cmdWithRetry(curlCmd, strconv.Itoa(http.StatusOK), cmdRetryTimeout)).Should(BeTrue())
+
+				sess, err := start(`deis pull %s -a %s --procfile="%s"`, exampleImage, testApp.Name, procFile)
+				Expect(err).To(BeNil())
+				Eventually(sess, (10 * time.Minute)).Should(Exit(0))
+				Eventually(sess).Should(Say("Creating build..."))
+				Eventually(sess).Should(Say("done"))
+				Eventually(sess).Should(Exit(0))
+
+				sess, err = start("deis ps:scale worker=1 -a %s", testApp.Name)
+				Expect(err).NotTo(HaveOccurred())
+				Eventually(sess).Should(Say("Scaling processes... but first,"))
+				Eventually(sess, "2m").Should(Say(`done in \d+s`))
+				Eventually(sess).Should(Say("=== %s Processes", testApp.Name))
+				Eventually(sess).Should(Exit(0))
+
+				// TODO: #84
+				// "deis logs -a %s", app
+				// sess, err = start("deis logs -a %s", testApp.Name)
+				// Expect(err).To(BeNil())
+				// Eventually(sess).Should(Say("hi"))
+				// Eventually(sess).Should(Exit(0))
 			})
 		})
-
 	})
 })

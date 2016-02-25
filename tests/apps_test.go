@@ -15,6 +15,8 @@ import (
 	"github.com/deis/workflow-e2e/shims"
 )
 
+var uuidRegExp = `[0-9a-f]{8}-([0-9a-f]{4}-){3}[0-9a-f]{12}`
+
 var _ = Describe("Apps", func() {
 	var testApp App
 
@@ -133,7 +135,7 @@ var _ = Describe("Apps", func() {
 			sess, err := start("deis info -a %s", testApp.Name)
 			Expect(err).NotTo(HaveOccurred())
 			Eventually(sess).Should(Say("=== %s Application", testApp.Name))
-			Eventually(sess).Should(Say(`uuid:\s*[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}`))
+			Eventually(sess).Should(Say(`uuid:\s*%s`, uuidRegExp))
 			Eventually(sess).Should(Say(`url:\s*%s`, strings.Replace(testApp.URL, "http://", "", 1)))
 			Eventually(sess).Should(Say(`owner:\s*%s`, testUser))
 			Eventually(sess).Should(Say(`id:\s*%s`, testApp.Name))
