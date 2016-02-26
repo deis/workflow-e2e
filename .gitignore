@@ -47,3 +47,6 @@ _scripts/ci/bintray-ci.json
 
 tests/tests.test
 tests/_tests.test
+
+junit.xml
+

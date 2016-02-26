@@ -18,6 +18,8 @@ import (
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gbytes"
 	. "github.com/onsi/gomega/gexec"
+
+	"github.com/onsi/ginkgo/reporters"
 )
 
 type Cmd struct {
@@ -49,7 +51,14 @@ func getRandAppName() string {
 
 func TestTests(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Deis Workflow")
+
+	enableJunit := os.Getenv("JUNIT")
+	if enableJunit == "true" {
+		junitReporter := reporters.NewJUnitReporter("junit.xml")
+		RunSpecsWithDefaultAndCustomReporters(t, "Deis Workflow", []Reporter{junitReporter})
+	} else {
+		RunSpecs(t, "Deis Workflow")
+	}
 }
 
 var (
