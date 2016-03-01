@@ -60,17 +60,13 @@ var _ = Describe("Apps", func() {
 		BeforeEach(func() {
 			cleanup = true
 			testApp.Name = getRandAppName()
-			cmd, err := start("git init")
-			Expect(err).NotTo(HaveOccurred())
-			Eventually(cmd).Should(Say("Initialized empty Git repository"))
+			gitInit()
 		})
 
 		AfterEach(func() {
 			if cleanup {
 				destroyApp(testApp)
-				cmd, err := start("rm -rf .git")
-				Expect(err).NotTo(HaveOccurred())
-				Eventually(cmd).Should(Exit(0))
+				gitClean()
 			}
 		})
 

@@ -246,7 +246,9 @@ func start(cmdLine string, args ...interface{}) (*Session, error) {
 func startCmd(command Cmd) (*Session, error) {
 	cmd := exec.Command("/bin/sh", "-c", command.CommandLineString)
 	cmd.Env = command.Env
-	io.WriteString(GinkgoWriter, fmt.Sprintf("$ %s\n", command.CommandLineString))
+	if debug {
+		io.WriteString(GinkgoWriter, fmt.Sprintf("$ %s\n", command.CommandLineString))
+	}
 	return Start(cmd, GinkgoWriter, GinkgoWriter)
 }
 
@@ -348,4 +350,38 @@ func deployApp(name string) App {
 	Eventually(cmd).Should(Exit(0))
 
 	return app
+}
+
+// cmdWithRetry runs the provided <cmd> repeatedly, once a second up to the
+// supplied <timeout> until the <cmd> result contains the <expectedResult>
+// An example use of this utility would be curl-ing a url and waiting
+// until the response code matches the expected response
+func cmdWithRetry(cmd Cmd, expectedResult string, timeout int) bool {
+	var result string
+	fmt.Printf("Waiting up to %d seconds for `%s` to return %s...\n", timeout, cmd, expectedResult)
+	for i := 0; i < timeout; i++ {
+		sess, err := startCmd(cmd)
+		Expect(err).NotTo(HaveOccurred())
+		result = string(sess.Wait().Out.Contents())
+		if strings.Contains(result, expectedResult) {
+			return true
+		}
+		time.Sleep(1 * time.Second)
+	}
+	fmt.Printf("FAIL: '%s' does not match expected result of '%s'\n", result, expectedResult)
+	return false
+}
+
+// gitInit simply invokes 'git init' and verifies the command is successful
+func gitInit() {
+	cmd, err := start("git init")
+	Expect(err).NotTo(HaveOccurred())
+	Eventually(cmd).Should(Say("Initialized empty Git repository"))
+}
+
+// gitClean destroys the .git directory and verifies the command is successful
+func gitClean() {
+	cmd, err := start("rm -rf .git")
+	Expect(err).NotTo(HaveOccurred())
+	Eventually(cmd).Should(Exit(0))
 }
