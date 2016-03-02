@@ -107,7 +107,9 @@ var _ = Describe("Processes", func() {
 					// TODO: need some way to choose between "web" and "cmd" here!
 					arg = "cmd"
 				case "one":
-					arg = beforeProcs[rand.Intn(len(beforeProcs))]
+					procsLen := len(beforeProcs)
+					Expect(procsLen).To(BeNumerically(">", 0))
+					arg = beforeProcs[rand.Intn(procsLen)]
 				}
 				sess, err = start("deis ps:restart %s --app=%s", arg, testApp.Name)
 				Expect(err).NotTo(HaveOccurred())
