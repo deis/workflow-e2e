@@ -107,15 +107,19 @@ var _ = Describe("Apps", func() {
 	})
 
 	Context("with a deployed app", func() {
+		var cleanup bool
 		var testApp App
 
 		BeforeEach(func() {
+			cleanup = true
 			testApp = deployApp("example-go")
 		})
 
 		AfterEach(func() {
 			defer os.Chdir("..")
-			destroyApp(testApp)
+			if cleanup {
+				destroyApp(testApp)
+			}
 		})
 
 		It("can't create an existing app", func() {
@@ -178,17 +182,24 @@ var _ = Describe("Apps", func() {
 			Expect(strings.TrimSpace(string(output))).To(Equal(testApp.URL))
 		})
 
-		// V broken
-		XIt("can run a command in the app environment", func() {
-			cmd, err := start("deis apps:run echo Hello, 世界")
+		It("can run a command in the app environment", func() {
+			sess, err := start("deis apps:run echo Hello, 世界")
 			Expect(err).NotTo(HaveOccurred())
-			Eventually(cmd, (1 * time.Minute)).Should(SatisfyAll(
-				HavePrefix("Running 'echo Hello, 世界'..."),
-				HaveSuffix("Hello, 世界\n")))
+			Eventually(sess, (1 * time.Minute)).Should(Say("Hello, 世界"))
 		})
 
-		// TODO: this requires a second user account
-		XIt("can transfer the app to another owner", func() {
+		It("can transfer the app to another owner", func() {
+			_, err := start("deis apps:transfer " + testAdminUser)
+			Expect(err).NotTo(HaveOccurred())
+			sess, _ := start("deis info -a %s", testApp.Name)
+			Eventually(sess).Should(Exit(1))
+			Eventually(sess.Err).Should(Say("You do not have permission to perform this action."))
+			// destroy it ourselves because the spec teardown cannot destroy as regular user
+			cleanup = false
+			login(url, testAdminUser, testAdminPassword)
+			destroyApp(testApp)
+			// log back in and continue with the show
+			login(url, testUser, testPassword)
 		})
 	})
 })
