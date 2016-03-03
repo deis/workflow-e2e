@@ -109,7 +109,7 @@ var _ = Describe("Domains", func() {
 			// attempt to remove non-existent domain
 			sess, err = start("deis domains:remove %s --app=%s", domain, testApp.Name)
 			Expect(err).NotTo(HaveOccurred())
-			Eventually(sess.Err).Should(Say("500 Internal Server Error")) // better error/explanation needed from cli
+			Eventually(sess.Err).Should(Say("404 Not Found"))
 			Eventually(sess).Should(Exit(1))
 
 			sess, err = start("deis domains:list --app=%s", testApp.Name)
