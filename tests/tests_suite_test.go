@@ -246,9 +246,7 @@ func start(cmdLine string, args ...interface{}) (*Session, error) {
 func startCmd(command Cmd) (*Session, error) {
 	cmd := exec.Command("/bin/sh", "-c", command.CommandLineString)
 	cmd.Env = command.Env
-	if debug {
-		io.WriteString(GinkgoWriter, fmt.Sprintf("$ %s\n", command.CommandLineString))
-	}
+	io.WriteString(GinkgoWriter, fmt.Sprintf("$ %s\n", command.CommandLineString))
 	return Start(cmd, GinkgoWriter, GinkgoWriter)
 }
 
