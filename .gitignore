@@ -1,43 +1,6 @@
-*.py[cod]
-
-# Packages
-*.egg
-*.egg-info
-dist
-build
-eggs
-parts
-var
-sdist
-develop-eggs
-.installed.cfg
-lib
-lib64
-
-# Deis' config file
-controller/deis/local_settings.py
-controller/.secret_key
-
 # local binaries, installers, and artifacts
-client/deis
-client/client
-client/deis.exe
-client/*.run
-client/makeself/
-docs/_build/
-docs/docs.zip
-docs/dummy.sqlite3
-manifests/*.tmp.yml
-_tests/_tests.test
-_tests/example-*/
-
-# coverage reports
-.coverage
-coverage.out
-htmlcov/
-
-# python virtual environments for testing
-venv/
+tests/tests.test
+tests/example-*/
 
 # vendored go source code
 vendor/
@@ -45,8 +8,4 @@ vendor/
 # generated bintray scripts during ci
 _scripts/ci/bintray-ci.json
 
-tests/tests.test
-tests/_tests.test
-
 junit.xml
-
