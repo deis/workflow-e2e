@@ -43,14 +43,14 @@ var _ = Describe("Domains", func() {
 			sess, err := start("deis domains:list --app=%s", testApp.Name)
 			Expect(err).NotTo(HaveOccurred())
 			Eventually(sess).Should(Say("=== %s Domains", testApp.Name))
-			Eventually(sess).ShouldNot(Say("%s", testApp.Name))
+			Eventually(sess).Should(Say("%s", testApp.Name))
 			Eventually(sess).Should(Exit(0))
 		})
 
 		It("cannot add or remove domains", func() {
 			sess, err := start("deis domains:add %s --app=%s", domain, testApp.Name)
 			Expect(err).NotTo(HaveOccurred())
-			Eventually(sess.Err).Should(Say("500 Internal Server Error")) // better error/explanation needed from cli
+			Eventually(sess.Err).Should(Say("404 Not Found"))
 			Eventually(sess).Should(Exit(1))
 
 			sess, err = start("deis domains:remove %s --app=%s", domain, testApp.Name)
