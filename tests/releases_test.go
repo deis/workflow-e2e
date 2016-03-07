@@ -15,7 +15,10 @@ var _ = Describe("Releases", func() {
 
 		BeforeEach(func() {
 			appName = getRandAppName()
-			createApp(appName)
+			cmd := createApp(appName)
+			Eventually(cmd).Should(SatisfyAll(
+				Say("Git remote deis added"),
+				Say("remote available at ")))
 		})
 
 		// 500's everytime

@@ -312,10 +312,11 @@ func getRawRouter() (*neturl.URL, error) {
 	}
 }
 
-func createApp(name string) *Session {
-	cmd, err := start("deis apps:create %s", name)
+func createApp(name string, options ...string) *Session {
+	cmd, err := start("deis apps:create %s %s", name, strings.Join(options, " "))
 	Expect(err).NotTo(HaveOccurred())
 	Eventually(cmd).Should(Say("created %s", name))
+	Eventually(cmd).Should(Exit(0))
 
 	return cmd
 }
@@ -340,7 +341,6 @@ func deployApp(name string) App {
 	Eventually(cmd).Should(SatisfyAll(
 		Say("Git remote deis added"),
 		Say("remote available at ")))
-	Eventually(cmd).Should(Exit(0))
 
 	cmd, err := start("GIT_SSH=%s git push deis master", gitSSH)
 	Expect(err).NotTo(HaveOccurred())
