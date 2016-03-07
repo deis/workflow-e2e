@@ -50,8 +50,8 @@ var _ = Describe("Domains", func() {
 		It("can add and remove domains", func() {
 			sess, err := start("deis domains:add %s --app=%s", domain, testApp.Name)
 			Expect(err).NotTo(HaveOccurred())
-			Eventually(sess).Should(Say("=== %s Domains", testApp.Name))
-			Eventually(sess).Should(Say("%s", testApp.Name))
+			Eventually(sess).Should(Say("Adding %s to %s...", domain, testApp.Name))
+			Eventually(sess).Should(Say("done"))
 			Eventually(sess).Should(Exit(0))
 
 			sess, err = start("deis domains:remove %s --app=%s", domain, testApp.Name)
