@@ -39,6 +39,7 @@ const (
 
 var (
 	errMissingRouterHostEnvVar = fmt.Errorf("missing %s", deisRouterServiceHost)
+	defaultMaxTimeout = 5 * time.Minute // gomega's default is 2 minutes
 )
 
 func init() {

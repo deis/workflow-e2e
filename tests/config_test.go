@@ -29,7 +29,7 @@ var _ = Describe("Config", func() {
 			sess, err := start("deis config:set POWERED_BY=midi-chlorians")
 			Expect(err).NotTo(HaveOccurred())
 			Eventually(sess).Should(Say("Creating config"))
-			Eventually(sess, "5m").Should(Say("=== %s Config", testApp.Name))
+			Eventually(sess, defaultMaxTimeout).Should(Say("=== %s Config", testApp.Name))
 			Eventually(sess).Should(Say(`POWERED_BY\s+midi-chlorians`))
 			Eventually(sess).Should(Exit(0))
 
@@ -46,7 +46,7 @@ var _ = Describe("Config", func() {
 
 			sess, err = start("deis run env -a %s", testApp.Name)
 			Expect(err).NotTo(HaveOccurred())
-			Eventually(sess, "5m").Should(Say("POWERED_BY=midi-chlorians"))
+			Eventually(sess, defaultMaxTimeout).Should(Say("POWERED_BY=midi-chlorians"))
 			Eventually(sess).Should(Exit(0))
 		})
 
@@ -54,7 +54,7 @@ var _ = Describe("Config", func() {
 			sess, err := start("deis config:set FOO=1 -a %s", testApp.Name)
 			Expect(err).NotTo(HaveOccurred())
 			Eventually(sess).Should(Say("Creating config"))
-			Eventually(sess, "5m").Should(Say("=== %s Config", testApp.Name))
+			Eventually(sess, defaultMaxTimeout).Should(Say("=== %s Config", testApp.Name))
 			Eventually(sess).Should(Say(`FOO\s+1`))
 			Eventually(sess).Should(Exit(0))
 
@@ -66,7 +66,7 @@ var _ = Describe("Config", func() {
 
 			sess, err = start("deis run env -a %s", testApp.Name)
 			Expect(err).NotTo(HaveOccurred())
-			Eventually(sess, "5m").Should(Say("FOO=1"))
+			Eventually(sess, defaultMaxTimeout).Should(Say("FOO=1"))
 			Eventually(sess).Should(Exit(0))
 		})
 
@@ -74,7 +74,7 @@ var _ = Describe("Config", func() {
 			sess, err := start("deis config:set FOO=null BAR=nil -a %s", testApp.Name)
 			Expect(err).NotTo(HaveOccurred())
 			Eventually(sess).Should(Say("Creating config"))
-			Eventually(sess, "5m").Should(Say("=== %s Config", testApp.Name))
+			Eventually(sess, defaultMaxTimeout).Should(Say("=== %s Config", testApp.Name))
 			Eventually(sess).Should(Exit(0))
 			output := string(sess.Out.Contents())
 			Expect(output).To(MatchRegexp(`FOO\s+null`))
@@ -90,7 +90,7 @@ var _ = Describe("Config", func() {
 
 			sess, err = start("deis run env -a %s", testApp.Name)
 			Expect(err).NotTo(HaveOccurred())
-			Eventually(sess, "5m").Should(Exit(0))
+			Eventually(sess, defaultMaxTimeout).Should(Exit(0))
 			output = string(sess.Out.Contents())
 			Expect(output).To(ContainSubstring("FOO=null"))
 			Expect(output).To(ContainSubstring("BAR=nil"))
@@ -100,7 +100,7 @@ var _ = Describe("Config", func() {
 			sess, err := start(`deis config:set -a %s POWERED_BY=the\ Deis\ team`, testApp.Name)
 			Expect(err).NotTo(HaveOccurred())
 			Eventually(sess).Should(Say("Creating config"))
-			Eventually(sess, "5m").Should(Say("=== %s Config", testApp.Name))
+			Eventually(sess, defaultMaxTimeout).Should(Say("=== %s Config", testApp.Name))
 			Eventually(sess).Should(Say(`POWERED_BY\s+the Deis team`))
 			Eventually(sess).Should(Exit(0))
 
@@ -117,7 +117,7 @@ var _ = Describe("Config", func() {
 
 			sess, err = start("deis run -a %s env", testApp.Name)
 			Expect(err).NotTo(HaveOccurred())
-			Eventually(sess, "5m").Should(Say("POWERED_BY=the Deis team"))
+			Eventually(sess, defaultMaxTimeout).Should(Say("POWERED_BY=the Deis team"))
 			Eventually(sess).Should(Exit(0))
 		})
 
@@ -129,7 +129,7 @@ multiline string.`
 			sess, err := start(`deis config:set -a %s FOO='%s'`, testApp.Name, value)
 			Expect(err).NotTo(HaveOccurred())
 			Eventually(sess).Should(Say("Creating config"))
-			Eventually(sess, "5m").Should(Say("=== %s Config", testApp.Name))
+			Eventually(sess, defaultMaxTimeout).Should(Say("=== %s Config", testApp.Name))
 			Eventually(sess).Should(Say(`FOO\s+%s`, value))
 			Eventually(sess).Should(Exit(0))
 
@@ -141,7 +141,7 @@ multiline string.`
 
 			sess, err = start("deis run -a %s env", testApp.Name)
 			Expect(err).NotTo(HaveOccurred())
-			Eventually(sess, "5m").Should(Say("FOO=%s", value))
+			Eventually(sess, defaultMaxTimeout).Should(Say("FOO=%s", value))
 			Eventually(sess).Should(Exit(0))
 		})
 
@@ -151,7 +151,7 @@ Blocked until https://github.com/deis/workflow/issues/478 is fixed!`, func() {
 				testApp.Name)
 			Expect(err).NotTo(HaveOccurred())
 			Eventually(sess).Should(Say("Creating config"))
-			Eventually(sess, "5m").Should(Say("=== %s Config", testApp.Name))
+			Eventually(sess, defaultMaxTimeout).Should(Say("=== %s Config", testApp.Name))
 			Eventually(sess).Should(Exit(0))
 			output := string(sess.Out.Contents())
 			Expect(output).To(MatchRegexp(`FOO\s+讲台`))
@@ -169,7 +169,7 @@ Blocked until https://github.com/deis/workflow/issues/478 is fixed!`, func() {
 
 			sess, err = start("deis run -a %s env", testApp.Name)
 			Expect(err).NotTo(HaveOccurred())
-			Eventually(sess, "5m").Should(Exit(0))
+			Eventually(sess, defaultMaxTimeout).Should(Exit(0))
 			output = string(sess.Out.Contents())
 			Expect(output).To(ContainSubstring("FOO=讲台"))
 			Expect(output).To(ContainSubstring("BAR=Þorbjörnsson"))
@@ -180,7 +180,7 @@ Blocked until https://github.com/deis/workflow/issues/478 is fixed!`, func() {
 			sess, err := start("deis config:set -a %s FOO=xyzzy", testApp.Name)
 			Expect(err).NotTo(HaveOccurred())
 			Eventually(sess).Should(Say("Creating config"))
-			Eventually(sess, "5m").Should(Say("=== %s Config", testApp.Name))
+			Eventually(sess, defaultMaxTimeout).Should(Say("=== %s Config", testApp.Name))
 			Eventually(sess).Should(Say(`FOO\s+xyzzy`))
 			Eventually(sess).Should(Exit(0))
 
@@ -193,7 +193,7 @@ Blocked until https://github.com/deis/workflow/issues/478 is fixed!`, func() {
 			sess, err = start("deis config:unset -a %s FOO", testApp.Name)
 			Expect(err).NotTo(HaveOccurred())
 			Eventually(sess).Should(Say("Removing config"))
-			Eventually(sess, "5m").Should(Say("=== %s Config", testApp.Name))
+			Eventually(sess, defaultMaxTimeout).Should(Say("=== %s Config", testApp.Name))
 			Eventually(sess).Should(Exit(0))
 			Eventually(sess).ShouldNot(Say(`FOO\s+xyzzy`))
 
@@ -205,7 +205,7 @@ Blocked until https://github.com/deis/workflow/issues/478 is fixed!`, func() {
 
 			sess, err = start("deis run -a %s env", testApp.Name)
 			Expect(err).NotTo(HaveOccurred())
-			Eventually(sess, "5m").Should(Exit(0))
+			Eventually(sess, defaultMaxTimeout).Should(Exit(0))
 			Eventually(sess).ShouldNot(Say("FOO=xyzzy"))
 		})
 
@@ -213,7 +213,7 @@ Blocked until https://github.com/deis/workflow/issues/478 is fixed!`, func() {
 			sess, err := start("deis config:set -a %s BAZ=Freck", testApp.Name)
 			Expect(err).NotTo(HaveOccurred())
 			Eventually(sess).Should(Say("Creating config"))
-			Eventually(sess, "5m").Should(Say("=== %s Config", testApp.Name))
+			Eventually(sess, defaultMaxTimeout).Should(Say("=== %s Config", testApp.Name))
 			Eventually(sess).Should(Say(`BAZ\s+Freck`))
 			Eventually(sess).Should(Exit(0))
 
@@ -233,7 +233,7 @@ FOO=bar`)
 
 			sess, err := start("deis config:push -a %s", testApp.Name)
 			Expect(err).NotTo(HaveOccurred())
-			Eventually(sess, "5m").Should(Exit(0))
+			Eventually(sess, defaultMaxTimeout).Should(Exit(0))
 
 			sess, err = start("deis config:list -a %s", testApp.Name)
 			Expect(err).NotTo(HaveOccurred())
