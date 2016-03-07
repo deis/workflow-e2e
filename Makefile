@@ -22,7 +22,7 @@ bootstrap:
 
 .PHONY: test-integration
 test-integration:
-	go test ./tests/... -v -ginkgo.v -ginkgo.slowSpecThreshold=120
+	go test ./tests/... -v -timeout 60m -ginkgo.v -ginkgo.slowSpecThreshold=120
 
 # Precompile the test suite into a binary "_tests.test"
 .PHONY: build
