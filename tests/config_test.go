@@ -145,8 +145,7 @@ multiline string.`
 			Eventually(sess).Should(Exit(0))
 		})
 
-		XIt(`can set an environment variable with non-ASCII and multibyte chars
-Blocked until https://github.com/deis/workflow/issues/478 is fixed!`, func() {
+		It("can set an environment variable with non-ASCII and multibyte chars", func() {
 			sess, err := start("deis config:set FOO=讲台 BAR=Þorbjörnsson BAZ=ноль -a %s",
 				testApp.Name)
 			Expect(err).NotTo(HaveOccurred())
