@@ -54,7 +54,7 @@ var _ = Describe("Processes", func() {
 				sess, err := start("deis ps:scale web=%d --app=%s", scaleTo, testApp.Name)
 				Expect(err).NotTo(HaveOccurred())
 				Eventually(sess).Should(Say("Scaling processes... but first,"))
-				Eventually(sess, "5m").Should(Say(`done in \d+s`))
+				Eventually(sess, defaultMaxTimeout).Should(Say(`done in \d+s`))
 				Eventually(sess).Should(Say("=== %s Processes", testApp.Name))
 				Eventually(sess).Should(Exit(0))
 
@@ -88,7 +88,7 @@ var _ = Describe("Processes", func() {
 				sess, err := start("deis ps:scale web=%d --app=%s", scaleTo, testApp.Name)
 				Expect(err).NotTo(HaveOccurred())
 				Eventually(sess).Should(Say("Scaling processes... but first,"))
-				Eventually(sess, "5m").Should(Say(`done in \d+s`))
+				Eventually(sess, defaultMaxTimeout).Should(Say(`done in \d+s`))
 				Eventually(sess).Should(Say("=== %s Processes", testApp.Name))
 				Eventually(sess).Should(Exit(0))
 
@@ -117,7 +117,7 @@ var _ = Describe("Processes", func() {
 				if scaleTo == 0 || restart == "by wrong type" {
 					Eventually(sess).Should(Say("Could not find any processes to restart"))
 				} else {
-					Eventually(sess, "5m").Should(Say(`done in \d+s`))
+					Eventually(sess, defaultMaxTimeout).Should(Say(`done in \d+s`))
 					Eventually(sess).Should(Say("=== %s Processes", testApp.Name))
 				}
 				Eventually(sess).Should(Exit(0))

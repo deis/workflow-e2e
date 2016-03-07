@@ -3,7 +3,6 @@ package tests
 import (
 	"fmt"
 	"os"
-	"time"
 	"net/http"
 	"strconv"
 
@@ -19,9 +18,9 @@ import (
 func createBuild(image string, testApp App) {
 	cmd, err := start("deis builds:create %s -a %s", image, testApp.Name)
 	Expect(err).NotTo(HaveOccurred())
-	Eventually(cmd).Should(Exit(0))
+	Eventually(cmd, defaultMaxTimeout).Should(Exit(0))
 	Eventually(cmd).Should(Say("Creating build..."))
-	Eventually(cmd, (30 * time.Second)).Should(Say("done"))
+	Eventually(cmd).Should(Say("done"))
 }
 
 var _ = Describe("Builds", func() {
@@ -105,15 +104,14 @@ var _ = Describe("Builds", func() {
 
 				sess, err := start(`deis pull %s -a %s --procfile="%s"`, exampleImage, testApp.Name, procFile)
 				Expect(err).To(BeNil())
-				Eventually(sess, (10 * time.Minute)).Should(Exit(0))
+				Eventually(sess, defaultMaxTimeout).Should(Exit(0))
 				Eventually(sess).Should(Say("Creating build..."))
 				Eventually(sess).Should(Say("done"))
-				Eventually(sess).Should(Exit(0))
 
 				sess, err = start("deis ps:scale worker=1 -a %s", testApp.Name)
 				Expect(err).NotTo(HaveOccurred())
 				Eventually(sess).Should(Say("Scaling processes... but first,"))
-				Eventually(sess, "2m").Should(Say(`done in \d+s`))
+				Eventually(sess, defaultMaxTimeout).Should(Say(`done in \d+s`))
 				Eventually(sess).Should(Say("=== %s Processes", testApp.Name))
 				Eventually(sess).Should(Exit(0))
 
