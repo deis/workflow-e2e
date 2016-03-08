@@ -10,46 +10,51 @@ import (
 )
 
 var _ = Describe("Releases", func() {
+	var testApp App
+	var exampleRepo string
+
 	Context("with a deployed app", func() {
-		var appName string
+		exampleRepo = "example-go"
 
 		BeforeEach(func() {
-			appName = getRandAppName()
-			cmd := createApp(appName)
+			gitInit()
+			testApp = App{Name: getRandAppName()}
+			cmd := createApp(testApp.Name)
 			Eventually(cmd).Should(SatisfyAll(
 				Say("Git remote deis added"),
 				Say("remote available at ")))
 		})
 
-		// 500's everytime
-		XIt("can deploy the app", func() {
-			sess, err := start("deis pull deis/example-go -a %s", appName)
-			Expect(err).To(BeNil())
-			Eventually(sess, (10 * time.Minute)).Should(Exit(0))
-			Eventually(sess).Should(Say("Creating build... done"))
+		AfterEach(func() {
+			gitClean()
 		})
 
-		It("can list releases", func() {
-			sess, err := start("deis releases:list -a %s", appName)
+		It("can deploy the app", func() {
+			sess, err := start("deis pull deis/%s -a %s", exampleRepo, testApp.Name)
+			Expect(err).To(BeNil())
+			Eventually(sess, defaultMaxTimeout).Should(Exit(0))
+			Eventually(sess).Should(Say("Creating build..."))
+			Eventually(sess).Should(Say("done"))
+
+			// "can list releases"
+			sess, err = start("deis releases:list -a %s", testApp.Name)
 			Expect(err).To(BeNil())
 			Eventually(sess, (1 * time.Minute)).Should(Exit(0))
-			Eventually(sess).Should(Say("=== %s Releases", appName))
+			Eventually(sess).Should(Say("=== %s Releases", testApp.Name))
 			Eventually(sess).Should(Say(`v1\s+.*\s+%s created initial release`, testUser))
-		})
 
-		It("can rollback to a previous release", func() {
-			sess, err := start("deis releases:rollback v1 -a %s", appName)
+			// "can rollback to a previous release"
+			sess, err = start("deis releases:rollback v1 -a %s", testApp.Name)
 			Expect(err).To(BeNil())
 			Eventually(sess, (1 * time.Minute)).Should(Exit(0))
 			Eventually(sess).Should(Say(`Rolling back to`))
 			Eventually(sess).Should(Say(`...done`))
-		})
 
-		It("can get info on releases", func() {
-			sess, err := start("deis releases:info v1 -a %s", appName)
+			// "can get info on releases"
+			sess, err = start("deis releases:info v1 -a %s", testApp.Name)
 			Expect(err).To(BeNil())
 			Eventually(sess, (1 * time.Minute)).Should(Exit(0))
-			Eventually(sess).Should(Say("=== %s Release v1", appName))
+			Eventually(sess).Should(Say("=== %s Release v1", testApp.Name))
 			Eventually(sess).Should(Say(`config:\s+[\w-]+`))
 			Eventually(sess).Should(Say(`owner:\s+%s`, testUser))
 			Eventually(sess).Should(Say(`summary:\s+%s \w+`, testUser))
