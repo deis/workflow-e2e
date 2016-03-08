@@ -39,7 +39,7 @@ const (
 
 var (
 	errMissingRouterHostEnvVar = fmt.Errorf("missing %s", deisRouterServiceHost)
-	defaultMaxTimeout = 5 * time.Minute // gomega's default is 2 minutes
+	defaultMaxTimeout          = 5 * time.Minute // gomega's default is 2 minutes
 )
 
 func init() {
@@ -131,6 +131,8 @@ var _ = BeforeEach(func() {
 
 	os.Chdir(testRoot)
 	output, err = execute(`git clone https://github.com/deis/example-go.git`)
+	Expect(err).NotTo(HaveOccurred(), output)
+	output, err = execute(`git clone https://github.com/deis/example-perl.git`)
 	Expect(err).NotTo(HaveOccurred(), output)
 
 	login(url, testUser, testPassword)
@@ -318,6 +320,7 @@ func createApp(name string, options ...string) *Session {
 	Expect(err).NotTo(HaveOccurred())
 	Eventually(cmd).Should(Say("created %s", name))
 	Eventually(cmd).Should(Exit(0))
+	Eventually(cmd).Should(Say("remote available at "))
 
 	return cmd
 }
@@ -334,18 +337,10 @@ func destroyApp(app App) *Session {
 }
 
 func deployApp(name string) App {
-	os.Chdir(name)
-	appName := getRandAppName()
-	app := App{Name: appName, URL: strings.Replace(url, "deis", appName, 1)}
-
-	cmd := createApp(app.Name)
-	Eventually(cmd).Should(SatisfyAll(
-		Say("Git remote deis added"),
-		Say("remote available at ")))
-
+	app := App{Name: name, URL: strings.Replace(url, "deis", name, 1)}
 	cmd, err := start("GIT_SSH=%s git push deis master", gitSSH)
 	Expect(err).NotTo(HaveOccurred())
-	Eventually(cmd.Err, "2m").Should(Say("Done, %s:v2 deployed to Deis", app.Name))
+	Eventually(cmd.Err, "5m").Should(Say(`Done, %s:v\d deployed to Deis`, app.Name))
 	Eventually(cmd).Should(Exit(0))
 
 	return app

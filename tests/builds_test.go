@@ -2,8 +2,8 @@ package tests
 
 import (
 	"fmt"
-	"os"
 	"net/http"
+	"os"
 	"strconv"
 
 	. "github.com/onsi/ginkgo"
@@ -48,10 +48,7 @@ var _ = Describe("Builds", func() {
 
 			BeforeEach(func() {
 				gitInit()
-				cmd := createApp(testApp.Name)
-				Eventually(cmd).Should(SatisfyAll(
-					Say("Git remote deis added"),
-					Say("remote available at ")))
+				createApp(testApp.Name)
 				createBuild(exampleImage, testApp)
 			})
 
@@ -78,7 +75,10 @@ var _ = Describe("Builds", func() {
 				cmd := createApp(testApp.Name, "--no-remote")
 				Eventually(cmd).Should(Not(Say("Git remote deis added")))
 
-				testApp = deployApp(exampleRepo)
+				os.Chdir(exampleRepo)
+				appName := getRandAppName()
+				createApp(appName)
+				testApp = deployApp(appName)
 				procFile = fmt.Sprintf("worker: while true; do echo hi; sleep 3; done")
 
 				createBuild(exampleImage, testApp)

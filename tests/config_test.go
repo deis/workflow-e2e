@@ -2,6 +2,7 @@ package tests
 
 import (
 	"io/ioutil"
+	"os"
 	"sync"
 
 	. "github.com/onsi/ginkgo"
@@ -21,7 +22,10 @@ var _ = Describe("Config", func() {
 		BeforeEach(func() {
 			// Set up the Processes test app only once and assume the suite will clean up.
 			once.Do(func() {
-				testApp = deployApp("example-go")
+				os.Chdir("example-go")
+				appName := getRandAppName()
+				createApp(appName)
+				testApp = deployApp(appName)
 			})
 		})
 
