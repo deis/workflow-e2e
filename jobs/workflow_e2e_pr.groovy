@@ -23,14 +23,22 @@ job('workflow-e2e-pr') {
    }
 
   parameters {
-    stringParam('DOCKER_USER', 'deisci+jenkins', 'Docker Hub account name')
+    stringParam('DOCKER_USERNAME', 'deisbot', 'Docker Hub account name')
     credentialsParam('DOCKER_PASSWORD') {
       type('org.jenkinsci.plugins.plaincredentials.impl.StringCredentialsImpl')
       required()
-      defaultValue('c67dc0a1-c8c4-4568-a73d-53ad8530ceeb')
-      description('Docker Hub account password')
+      defaultValue('0d1f268f-407d-4cd9-a3c2-0f9671df0104')
+      description('deisbot Docker Hub account password')
     }
-    stringParam('DOCKER_EMAIL', '', 'Docker Hub account name')
+    stringParam('DOCKER_EMAIL', 'dummy-address@deis.com', 'Docker Hub account name')
+    stringParam('QUAY_USERNAME', 'deisci+jenkins', 'Quay account name')
+    credentialsParam('QUAY_PASSWORD') {
+      type('org.jenkinsci.plugins.plaincredentials.impl.StringCredentialsImpl')
+      required()
+      defaultValue('c67dc0a1-c8c4-4568-a73d-53ad8530ceeb')
+      description('deisci+jenkins Quay account password')
+    }
+    stringParam('QUAY_EMAIL', 'deisci+jenkins@deis.com', 'Quay email address')
     stringParam('sha1', 'master', 'Specific Git SHA to test')
   }
 
