@@ -3,6 +3,7 @@ package tests
 import (
 	"fmt"
 	"math/rand"
+	"os"
 	"regexp"
 	"sort"
 	"strconv"
@@ -42,7 +43,10 @@ var _ = Describe("Processes", func() {
 		BeforeEach(func() {
 			// Set up the Processes test app only once and assume the suite will clean up.
 			once.Do(func() {
-				testApp = deployApp("example-go")
+				os.Chdir("example-go")
+				appName := getRandAppName()
+				createApp(appName)
+				testApp = deployApp(appName)
 			})
 		})
 

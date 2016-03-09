@@ -114,7 +114,10 @@ var _ = Describe("Apps", func() {
 
 		BeforeEach(func() {
 			cleanup = true
-			testApp = deployApp("example-go")
+			os.Chdir("example-go")
+			appName := getRandAppName()
+			createApp(appName)
+			testApp = deployApp(appName)
 		})
 
 		AfterEach(func() {
@@ -132,20 +135,7 @@ var _ = Describe("Apps", func() {
 		})
 
 		It("can get app info", func() {
-			sess, err := start("deis info -a %s", testApp.Name)
-			Expect(err).NotTo(HaveOccurred())
-			Eventually(sess).Should(Say("=== %s Application", testApp.Name))
-			Eventually(sess).Should(Say(`uuid:\s*%s`, uuidRegExp))
-			Eventually(sess).Should(Say(`url:\s*%s`, strings.Replace(testApp.URL, "http://", "", 1)))
-			Eventually(sess).Should(Say(`owner:\s*%s`, testUser))
-			Eventually(sess).Should(Say(`id:\s*%s`, testApp.Name))
-
-			Eventually(sess).Should(Say("=== %s Processes", testApp.Name))
-			Eventually(sess).Should(Say(procsRegexp, testApp.Name))
-
-			Eventually(sess).Should(Say("=== %s Domains", testApp.Name))
-			Eventually(sess).Should(Say("%s", testApp.Name))
-			Eventually(sess).Should(Exit(0))
+			verifyAppInfo(testApp)
 		})
 
 		// V broken
@@ -159,29 +149,7 @@ var _ = Describe("Apps", func() {
 		})
 
 		It("can open the app's URL", func() {
-			// the underlying open utility 'deis open' looks for
-			toShim := "open" //darwin
-			if runtime.GOOS == "linux" {
-				toShim = "xdg-open"
-			}
-			myShim, err := shims.CreateSystemShim(toShim)
-			if err != nil {
-				panic(err)
-			}
-			defer shims.RemoveShim(myShim)
-
-			// create custom env with custom/prefixed PATH value
-			env := shims.PrependPath(os.Environ(), os.TempDir())
-
-			// invoke functionality under test
-			sess, err := startCmd(Cmd{Env: env, CommandLineString: "deis open"})
-			Expect(err).To(BeNil())
-			Eventually(sess).Should(Exit(0))
-
-			// check shim output
-			output, err := ioutil.ReadFile(myShim.OutFile.Name())
-			Expect(err).NotTo(HaveOccurred())
-			Expect(strings.TrimSpace(string(output))).To(Equal(testApp.URL))
+			verifyAppOpen(testApp)
 		})
 
 		It("can run a command in the app environment", func() {
@@ -204,4 +172,76 @@ var _ = Describe("Apps", func() {
 			login(url, testUser, testPassword)
 		})
 	})
+
+	Context("with a custom buildpack deployed app", func() {
+		var cleanup bool
+		var testApp App
+
+		BeforeEach(func() {
+			cleanup = true
+			os.Chdir("example-perl")
+			appName := getRandAppName()
+			createApp(appName, "--buildpack", "https://github.com/miyagawa/heroku-buildpack-perl.git")
+			testApp = deployApp(appName)
+		})
+
+		AfterEach(func() {
+			defer os.Chdir("..")
+			if cleanup {
+				destroyApp(testApp)
+			}
+		})
+
+		It("can get app info", func() {
+			verifyAppInfo(testApp)
+		})
+
+		It("can open the app's URL", func() {
+			verifyAppOpen(testApp)
+		})
+
+	})
 })
+
+func verifyAppInfo(testApp App) {
+	sess, err := start("deis info -a %s", testApp.Name)
+	Expect(err).NotTo(HaveOccurred())
+	Eventually(sess).Should(Say("=== %s Application", testApp.Name))
+	Eventually(sess).Should(Say(`uuid:\s*%s`, uuidRegExp))
+	Eventually(sess).Should(Say(`url:\s*%s`, strings.Replace(testApp.URL, "http://", "", 1)))
+	Eventually(sess).Should(Say(`owner:\s*%s`, testUser))
+	Eventually(sess).Should(Say(`id:\s*%s`, testApp.Name))
+
+	Eventually(sess).Should(Say("=== %s Processes", testApp.Name))
+	Eventually(sess).Should(Say(procsRegexp, testApp.Name))
+
+	Eventually(sess).Should(Say("=== %s Domains", testApp.Name))
+	Eventually(sess).Should(Say("%s", testApp.Name))
+	Eventually(sess).Should(Exit(0))
+}
+
+func verifyAppOpen(testApp App) {
+	// the underlying open utility 'deis open' looks for
+	toShim := "open" //darwin
+	if runtime.GOOS == "linux" {
+		toShim = "xdg-open"
+	}
+	myShim, err := shims.CreateSystemShim(toShim)
+	if err != nil {
+		panic(err)
+	}
+	defer shims.RemoveShim(myShim)
+
+	// create custom env with custom/prefixed PATH value
+	env := shims.PrependPath(os.Environ(), os.TempDir())
+
+	// invoke functionality under test
+	sess, err := startCmd(Cmd{Env: env, CommandLineString: "deis open"})
+	Expect(err).To(BeNil())
+	Eventually(sess).Should(Exit(0))
+
+	// check shim output
+	output, err := ioutil.ReadFile(myShim.OutFile.Name())
+	Expect(err).NotTo(HaveOccurred())
+	Expect(strings.TrimSpace(string(output))).To(Equal(testApp.URL))
+}

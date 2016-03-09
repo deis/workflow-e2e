@@ -68,7 +68,10 @@ var _ = Describe("Domains", func() {
 		BeforeEach(func() {
 			cmdRetryTimeout = 10
 			domain = getRandDomain()
-			testApp = deployApp("example-go")
+			os.Chdir("example-go")
+			appName := getRandAppName()
+			createApp(appName)
+			testApp = deployApp(appName)
 		})
 
 		AfterEach(func() {

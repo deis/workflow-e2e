@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"os"
 	"sync"
 
 	. "github.com/onsi/ginkgo"
@@ -17,7 +18,10 @@ var _ = Describe("Limits", func() {
 		BeforeEach(func() {
 			// Set up the Limits test app only once and assume the suite will clean up.
 			once.Do(func() {
-				testApp = deployApp("example-go")
+				os.Chdir("example-go")
+				appName := getRandAppName()
+				createApp(appName)
+				testApp = deployApp(appName)
 			})
 		})
 

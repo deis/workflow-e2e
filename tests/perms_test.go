@@ -13,7 +13,10 @@ var _ = Describe("Perms", func() {
 	var testApp App
 
 	BeforeEach(func() {
-		testApp = deployApp("example-go")
+		os.Chdir("example-go")
+		appName := getRandAppName()
+		createApp(appName)
+		testApp = deployApp(appName)
 	})
 
 	AfterEach(func() {
