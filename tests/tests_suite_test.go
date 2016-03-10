@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"path"
 	"regexp"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -41,6 +42,11 @@ var (
 	errMissingRouterHostEnvVar = fmt.Errorf("missing %s", deisRouterServiceHost)
 	defaultMaxTimeout          = 5 * time.Minute // gomega's default is 2 minutes
 )
+
+func getDir() string {
+	_, filename, _, _ := runtime.Caller(1)
+	return path.Dir(filename)
+}
 
 func init() {
 	rand.Seed(time.Now().UnixNano())
@@ -352,7 +358,7 @@ func deployApp(name string) App {
 // until the response code matches the expected response
 func cmdWithRetry(cmd Cmd, expectedResult string, timeout int) bool {
 	var result string
-	fmt.Printf("Waiting up to %d seconds for `%s` to return %s...\n", timeout, cmd, expectedResult)
+	fmt.Printf("Waiting up to %d seconds for `%s` to return %s...\n", timeout, cmd.CommandLineString, expectedResult)
 	for i := 0; i < timeout; i++ {
 		sess, err := startCmd(cmd)
 		Expect(err).NotTo(HaveOccurred())

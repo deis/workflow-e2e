@@ -17,6 +17,35 @@ func getRandDomain() string {
 	return fmt.Sprintf("my-custom-%d.domain.com", rand.Intn(999999999))
 }
 
+// TODO: move to sister dir/package 'common'
+//       for example, these could live in common/domains.go
+// demains-specific common actions and expectations
+func addDomain(domain, appName string) {
+	addOrRemoveDomain(domain, appName, "add")
+}
+
+func removeDomain(domain, appName string) {
+	addOrRemoveDomain(domain, appName, "remove")
+}
+
+func addOrRemoveDomain(domain, appName, addOrRemove string) {
+	// Explicitly build literal substring since 'domain'
+	// may be a wildcard domain ('*.foo.com') and we don't want Gomega
+	// interpreting this string as a regexp
+	var substring string
+
+	sess, err := start("deis domains:%s %s --app=%s", addOrRemove, domain, appName)
+	Expect(err).NotTo(HaveOccurred())
+	if addOrRemove == "add" {
+		substring = fmt.Sprintf("Adding %s to %s...", domain, appName)
+	} else {
+		substring = fmt.Sprintf("Removing %s from %s...", domain, appName)
+	}
+	Eventually(sess.Wait().Out.Contents()).Should(ContainSubstring(substring))
+	Eventually(sess).Should(Say("done"))
+	Eventually(sess).Should(Exit(0))
+}
+
 var _ = Describe("Domains", func() {
 	var testApp App
 	var domain string
