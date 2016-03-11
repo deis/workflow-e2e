@@ -8,6 +8,8 @@ DEV_IMG := quay.io/deis/go-dev:0.9.0
 RUN_CMD := docker run --rm -e DEIS_ROUTER_SERVICE_HOST=${DEIS_ROUTER_SERVICE_HOST} -e DEIS_ROUTER_SERVICE_PORT=${DEIS_ROUTER_SERVICE_PORT} -v ${CURDIR}:${SRC_PATH} -w ${SRC_PATH} ${DEV_IMG}
 DEV_CMD := docker run --rm -e GO15VENDOREXPERIMENT=1 -v ${CURDIR}:${SRC_PATH} -w ${SRC_PATH} ${DEV_IMG}
 
+TEST_OPTS := -v -timeout=60m -ginkgo.v -ginkgo.slowSpecThreshold=120
+
 MUTABLE_VERSION ?= canary
 VERSION ?= git-$(shell git rev-parse --short HEAD)
 
@@ -22,7 +24,7 @@ bootstrap:
 
 .PHONY: test-integration
 test-integration:
-	go test ./tests/... -v -timeout 60m -ginkgo.v -ginkgo.slowSpecThreshold=120
+	go test ./tests/... ${TEST_OPTS}
 
 # Precompile the test suite into a binary "_tests.test"
 .PHONY: build
@@ -48,4 +50,6 @@ docker-mutable-push:
 .PHONY: docker-test-integration
 # run tests inside of a container
 docker-test-integration:
-	docker run -e DEIS_ROUTER_SERVICE_HOST=${DEIS_ROUTER_SERVICE_HOST} -e DEIS_ROUTER_SERVICE_PORT=${DEIS_ROUTER_SERVICE_PORT} ${IMAGE}
+	docker run -e DEIS_ROUTER_SERVICE_HOST=${DEIS_ROUTER_SERVICE_HOST} \
+	  -e DEIS_ROUTER_SERVICE_PORT=${DEIS_ROUTER_SERVICE_PORT} ${IMAGE} \
+	  /bin/tests.test ${TEST_OPTS}
