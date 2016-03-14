@@ -72,8 +72,7 @@ var _ = Describe("Builds", func() {
 
 			BeforeEach(func() {
 				cmdRetryTimeout = 10
-				cmd := createApp(testApp.Name, "--no-remote")
-				Eventually(cmd).Should(Not(Say("Git remote deis added")))
+				createApp(testApp.Name, "--no-remote")
 
 				os.Chdir(exampleRepo)
 				appName := getRandAppName()
