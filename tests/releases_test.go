@@ -19,10 +19,7 @@ var _ = Describe("Releases", func() {
 		BeforeEach(func() {
 			gitInit()
 			testApp = App{Name: getRandAppName()}
-			cmd := createApp(testApp.Name)
-			Eventually(cmd).Should(SatisfyAll(
-				Say("Git remote deis added"),
-				Say("remote available at ")))
+			createApp(testApp.Name)
 		})
 
 		AfterEach(func() {

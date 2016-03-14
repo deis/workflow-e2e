@@ -322,10 +322,21 @@ func getRawRouter() (*neturl.URL, error) {
 }
 
 func createApp(name string, options ...string) *Session {
+	var noRemote = false
 	cmd, err := start("deis apps:create %s %s", name, strings.Join(options, " "))
 	Expect(err).NotTo(HaveOccurred())
 	Eventually(cmd).Should(Say("created %s", name))
 	Eventually(cmd).Should(Exit(0))
+
+	for _, option := range options {
+		if option == "--no-remote" {
+			noRemote = true
+		}
+	}
+
+	if !noRemote {
+		Eventually(cmd).Should(Say("Git remote deis added"))
+	}
 	Eventually(cmd).Should(Say("remote available at "))
 
 	return cmd

@@ -57,10 +57,7 @@ var _ = Describe("Domains", func() {
 			gitInit()
 
 			testApp.Name = getRandAppName()
-			cmd := createApp(testApp.Name)
-			Eventually(cmd).Should(SatisfyAll(
-				Say("Git remote deis added"),
-				Say("remote available at ")))
+			createApp(testApp.Name)
 		})
 
 		AfterEach(func() {
