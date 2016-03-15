@@ -44,6 +44,10 @@ var (
 )
 
 func getDir() string {
+	var _, inDockerContainer = os.LookupEnv("DOCKERIMAGE")
+	if inDockerContainer {
+		return "/"
+	}
 	_, filename, _, _ := runtime.Caller(1)
 	return path.Dir(filename)
 }

@@ -107,7 +107,7 @@ var _ = Describe("Certs", func() {
 	var cleanup = true
 	var exampleRepo = "example-go"
 
-	certPath := path.Join(getDir(), "./certs")
+	certPath := path.Join(getDir(), "files/certs")
 	certs := map[string]Cert{
 		"www": Cert{
 			Name:     "www-foo-com",
