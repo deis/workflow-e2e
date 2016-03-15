@@ -8,7 +8,7 @@ DEV_IMG := quay.io/deis/go-dev:0.9.0
 RUN_CMD := docker run --rm -e DEIS_ROUTER_SERVICE_HOST=${DEIS_ROUTER_SERVICE_HOST} -e DEIS_ROUTER_SERVICE_PORT=${DEIS_ROUTER_SERVICE_PORT} -v ${CURDIR}:${SRC_PATH} -w ${SRC_PATH} ${DEV_IMG}
 DEV_CMD := docker run --rm -e GO15VENDOREXPERIMENT=1 -v ${CURDIR}:${SRC_PATH} -w ${SRC_PATH} ${DEV_IMG}
 
-TEST_OPTS := -v -timeout=60m -ginkgo.v -ginkgo.slowSpecThreshold=120
+TEST_OPTS := -test.v -test.timeout=60m -ginkgo.v -ginkgo.slowSpecThreshold=120
 
 MUTABLE_VERSION ?= canary
 VERSION ?= git-$(shell git rev-parse --short HEAD)
