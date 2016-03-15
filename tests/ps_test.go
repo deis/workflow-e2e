@@ -18,6 +18,17 @@ import (
 
 var procsRegexp = `(%s-v\d+-[\w-]+) up \(v\d+\)`
 
+// TODO: https://github.com/deis/workflow-e2e/issues/108
+//       for example, these could live in common/certs.go
+// certs-specific common actions and expectations
+func listProcs(testApp App) *Session {
+	sess, err := start("deis ps:list --app=%s", testApp.Name)
+	Expect(err).NotTo(HaveOccurred())
+	Eventually(sess).Should(Say("=== %s Processes", testApp.Name))
+	Eventually(sess).Should(Exit(0))
+	return sess
+}
+
 // scrapeProcs returns the sorted process names for an app from the given output.
 // It matches the current "deis ps" output for a healthy container:
 //   earthy-vocalist-v2-cmd-1d73e up (v2)
@@ -63,11 +74,8 @@ var _ = Describe("Processes", func() {
 				Eventually(sess).Should(Exit(0))
 
 				// test that there are the right number of processes listed
-				sess, err = start("deis ps:list --app=%s", testApp.Name)
-				Expect(err).NotTo(HaveOccurred())
-				Eventually(sess).Should(Say("=== %s Processes", testApp.Name))
-				Eventually(sess).Should(Exit(0))
-				procs := scrapeProcs(testApp.Name, sess.Out.Contents())
+				procsListing := listProcs(testApp).Out.Contents()
+				procs := scrapeProcs(testApp.Name, procsListing)
 				Expect(len(procs)).To(Equal(scaleTo))
 
 				// curl the app's root URL and print just the HTTP response code
@@ -127,11 +135,8 @@ var _ = Describe("Processes", func() {
 				Eventually(sess).Should(Exit(0))
 
 				// capture the process names
-				sess, err = start("deis ps:list --app=%s", testApp.Name)
-				Expect(err).NotTo(HaveOccurred())
-				Eventually(sess).Should(Say("=== %s Processes", testApp.Name))
-				Eventually(sess).Should(Exit(0))
-				afterProcs := scrapeProcs(testApp.Name, sess.Out.Contents())
+				procsListing := listProcs(testApp).Out.Contents()
+				afterProcs := scrapeProcs(testApp.Name, procsListing)
 
 				// compare the before and after sets of process names
 				Expect(len(afterProcs)).To(Equal(scaleTo))
