@@ -349,7 +349,7 @@ func createApp(name string, options ...string) *Session {
 func destroyApp(app App) *Session {
 	cmd, err := start("deis apps:destroy --app=%s --confirm=%s", app.Name, app.Name)
 	Expect(err).NotTo(HaveOccurred())
-	Eventually(cmd).Should(Exit(0))
+	Eventually(cmd, defaultMaxTimeout).Should(Exit(0))
 	Eventually(cmd).Should(SatisfyAll(
 		Say("Destroying %s...", app.Name),
 		Say(`done in `)))
