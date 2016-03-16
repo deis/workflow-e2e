@@ -104,7 +104,6 @@ var _ = Describe("Certs", func() {
 	var certName string
 	var certNames []string
 	var customSSLEndpoint string
-	var cleanup = true
 	var exampleRepo = "example-go"
 
 	certPath := path.Join(getDir(), "files/certs")
@@ -134,6 +133,12 @@ var _ = Describe("Certs", func() {
 		}
 	}
 
+	cleanUpDomains := func(domains []string) {
+		for _, domain := range domains {
+			removeDomain(domain, testApp.Name)
+		}
+	}
+
 	Context("with an app yet to be deployed", func() {
 		BeforeEach(func() {
 			gitInit()
@@ -145,9 +150,7 @@ var _ = Describe("Certs", func() {
 		})
 
 		AfterEach(func() {
-			if cleanup {
-				cleanUpCerts(certNames)
-			}
+			cleanUpCerts(certNames)
 		})
 
 		It("can add, attach, list, and remove certs", func() {
@@ -185,9 +188,7 @@ var _ = Describe("Certs", func() {
 
 		AfterEach(func() {
 			defer os.Chdir("..")
-			if cleanup {
-				cleanUpCerts(certNames)
-			}
+			cleanUpCerts(certNames)
 		})
 
 		It("can specify limit to number of certs returned by certs:list", func() {
@@ -286,12 +287,57 @@ var _ = Describe("Certs", func() {
 		})
 
 		Context("multiple domains and certs", func() {
-
 			domains := map[string]string{
 				"wildcard": "*.foo.com",
 				"foo":      "foo.com",
 				"bar":      "bar.com",
 			}
+			domainNames := []string{domains["wildcard"], domains["foo"], domains["bar"]}
+
+			AfterEach(func() {
+				// need to cleanup domains as they are not named randomly as above
+				cleanUpDomains(domainNames)
+			})
+
+			It("can attach/detach 2 certs (1 wildcard) to/from 3 domains (1 wildcard)", func() {
+				sharedCert := certs["wildcard"]
+				certNames = []string{sharedCert.Name, certs["bar"].Name}
+
+				// Add all 3 domains
+				for _, domain := range domains {
+					addDomain(domain, testApp.Name)
+				}
+
+				// Add 2 certs
+				addCert(sharedCert.Name, sharedCert.CertPath, sharedCert.KeyPath)
+				addCert(certs["bar"].Name, certs["bar"].CertPath, certs["bar"].KeyPath)
+
+				// Share wildcard cert betwtixt two domains, attach the other
+				for _, domain := range []string{domains["wildcard"], domains["foo"]} {
+					attachCert(sharedCert.Name, domain)
+				}
+				attachCert(certs["bar"].Name, domains["bar"])
+
+				// With multiple strings to check, use substrings as ordering is non-deterministic
+				// (Should(Say()) enforces strict ordering)
+				bothDomains := fmt.Sprintf("%s,%s", domains["wildcard"], domains["foo"])
+				Eventually(certsInfo(sharedCert.Name).Wait().Out.Contents()).Should(ContainSubstring(bothDomains))
+				Eventually(certsInfo(certs["bar"].Name)).Should(Say(domains["bar"]))
+
+				// All SSL endpoints should be good to go
+				for _, domain := range domains {
+					verifySSLEndpoint(customSSLEndpoint, domain, http.StatusOK)
+				}
+
+				// Detach shared cert from one domain and re-check endpoints
+				detachCert(sharedCert.Name, domains["wildcard"])
+				Eventually(certsInfo(sharedCert.Name)).Should(Say(domains["foo"]))
+				verifySSLEndpoint(customSSLEndpoint, domains["wildcard"], http.StatusNotFound)
+				verifySSLEndpoint(customSSLEndpoint, domains["foo"], http.StatusOK)
+
+				detachCert(certs["bar"].Name, domains["bar"])
+				verifySSLEndpoint(customSSLEndpoint, domains["bar"], http.StatusNotFound)
+			})
 
 			getOtherDomains := func(myDomain string, domains map[string]string) []string {
 				otherDomains := make([]string, 0, len(domains)-1)
@@ -308,6 +354,7 @@ var _ = Describe("Certs", func() {
 
 				func(domain, certName, cert, key string) {
 					certNames = []string{certName}
+					domainNames = []string{domain}
 
 					addDomain(domain, testApp.Name)
 
@@ -327,72 +374,12 @@ var _ = Describe("Certs", func() {
 					Eventually(certsInfo(certName)).Should(Say("No connected domains"))
 
 					verifySSLEndpoint(customSSLEndpoint, domain, http.StatusNotFound)
-
-					removeDomain(domain, testApp.Name)
 				},
 
 				Entry("a non-wildcard cert to a wildcard domain",
 					domains["wildcard"], certs["www"].Name, certs["www"].CertPath, certs["www"].KeyPath),
 				Entry("a non-wildcard cert to a non-wildcard domain",
 					domains["foo"], certs["foo"].Name, certs["foo"].CertPath, certs["foo"].KeyPath),
-				Entry("a non-wildcard cert to a non-wildcard domain",
-					domains["bar"], certs["bar"].Name, certs["bar"].CertPath, certs["bar"].KeyPath),
-			)
-
-			DescribeTable("2 certs (1 wildcard), 3 domains (1 wildcard)",
-
-				func(domain, certName, cert, key string) {
-					// Explicitly build literal substrings since one of the domains
-					// may be a wildcard domain ('*.foo.com') and we don't want Gomega
-					// interpreting this string as a regexp
-					var substring string
-					var expectedStatus int
-					cleanup = false
-
-					addDomain(domain, testApp.Name)
-
-					if domain != domains["foo"] { // use wildcard cert already added in prev run
-						addCert(certName, cert, key)
-					}
-
-					attachCert(certName, domain)
-
-					if domain == domains["foo"] { // verify wildcard domain also attached from prev run
-						substring = fmt.Sprintf("%s,%s", domains["wildcard"], domains["foo"])
-					} else {
-						substring = domain
-					}
-					Eventually(certsInfo(certName).Wait().Out.Contents()).Should(ContainSubstring(substring))
-
-					verifySSLEndpoint(customSSLEndpoint, domain, http.StatusOK)
-					for _, otherDomain := range getOtherDomains(domain, domains) {
-						// match wildcard cert still attached from prev run
-						if domain == domains["foo"] && otherDomain == domains["wildcard"] {
-							expectedStatus = http.StatusOK
-						} else {
-							expectedStatus = http.StatusNotFound
-						}
-						verifySSLEndpoint(customSSLEndpoint, otherDomain, expectedStatus)
-					}
-
-					if domain != domains["wildcard"] { // leave the cert attached for 'foo.com' domain
-						detachCert(certName, domain)
-						if domain == domains["foo"] { // need to also detach the wildcard cert since left attached above
-							detachCert(certName, domains["wildcard"])
-						}
-
-						Eventually(certsInfo(certName)).Should(Say("No connected domains"))
-
-						verifySSLEndpoint(customSSLEndpoint, domain, http.StatusNotFound)
-
-						removeCerts([]string{certName})
-					}
-				},
-
-				Entry("a wildcard cert to a wildcard domain",
-					domains["wildcard"], certs["wildcard"].Name, certs["wildcard"].CertPath, certs["wildcard"].KeyPath),
-				Entry("a wildcard cert to a non-wildcard domain",
-					domains["foo"], certs["wildcard"].Name, certs["wildcard"].CertPath, certs["wildcard"].KeyPath),
 				Entry("a non-wildcard cert to a non-wildcard domain",
 					domains["bar"], certs["bar"].Name, certs["bar"].CertPath, certs["bar"].KeyPath),
 			)
