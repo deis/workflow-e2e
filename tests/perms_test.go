@@ -1,8 +1,6 @@
 package tests
 
 import (
-	"os"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gbytes"
@@ -13,15 +11,13 @@ var _ = Describe("Perms", func() {
 	var testApp App
 
 	BeforeEach(func() {
-		os.Chdir("example-go")
-		appName := getRandAppName()
-		createApp(appName)
-		testApp = deployApp(appName)
+		testApp.Name = getRandAppName()
+		gitInit()
+		createApp(testApp.Name)
 	})
 
 	AfterEach(func() {
-		defer os.Chdir("..")
-		destroyApp(testApp)
+		gitClean()
 	})
 
 	Context("when logged in as an admin user", func() {
