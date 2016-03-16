@@ -18,8 +18,6 @@ The code in this repository is a set of [Ginkgo](http://onsi.github.io/ginkgo) a
 
 # Development
 
-# Development
-
 The Deis project welcomes contributions from all developers. The high level process for development matches many other open source projects. See below for an outline.
 
 * Fork this repository
