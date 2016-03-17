@@ -92,7 +92,7 @@ var _ = Describe("Domains", func() {
 		var cmdRetryTimeout int
 
 		BeforeEach(func() {
-			cmdRetryTimeout = 10
+			cmdRetryTimeout = 15
 			domain = getRandDomain()
 			os.Chdir("example-go")
 			appName := getRandAppName()
