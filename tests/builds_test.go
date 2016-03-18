@@ -15,12 +15,23 @@ import (
 // createBuild invokes deis builds:create <image> -a <app>
 // with provided <image> on provided <app>
 // and validates that no errors have occurred and build was successful
-func createBuild(image string, testApp App) {
-	cmd, err := start("deis builds:create %s -a %s", image, testApp.Name)
-	Expect(err).NotTo(HaveOccurred())
-	Eventually(cmd, defaultMaxTimeout).Should(Exit(0))
-	Eventually(cmd).Should(Say("Creating build..."))
-	Eventually(cmd).Should(Say("done"))
+func createBuild(image string, app App, options ...string) {
+	pullOrCreateBuild(image, app, "builds:create", strings.Join(options, " "))
+}
+
+// deisPull invokes deis pull <image> -a <app>
+// with provided <image> on provided <app>
+// and validates that no errors have occurred and build was successful
+func deisPull(image string, app App, options ...string) {
+	pullOrCreateBuild(image, app, "pull", strings.Join(options, " "))
+}
+
+func pullOrCreateBuild(image string, app App, command string, options string) {
+	sess, err := start("deis %s %s -a %s %s", command, image, app.Name, options)
+	Expect(err).To(BeNil())
+	Eventually(sess, defaultMaxTimeout).Should(Exit(0))
+	Eventually(sess).Should(Say("Creating build..."))
+	Eventually(sess).Should(Say("done"))
 }
 
 var _ = Describe("Builds", func() {
@@ -93,13 +104,9 @@ var _ = Describe("Builds", func() {
 				curlCmd = Cmd{CommandLineString: fmt.Sprintf(`curl -sL -w "%%{http_code}\\n" "%s" -o /dev/null`, testApp.URL)}
 				Eventually(cmdWithRetry(curlCmd, strconv.Itoa(http.StatusOK), cmdRetryTimeout)).Should(BeTrue())
 
-				sess, err := start(`deis pull %s -a %s --procfile="%s"`, exampleImage, testApp.Name, procFile)
-				Expect(err).To(BeNil())
-				Eventually(sess, defaultMaxTimeout).Should(Exit(0))
-				Eventually(sess).Should(Say("Creating build..."))
-				Eventually(sess).Should(Say("done"))
+				deisPull(exampleImage, testApp, fmt.Sprintf(`--procfile="%s"`, procFile))
 
-				sess, err = start("deis ps:scale worker=1 -a %s", testApp.Name)
+				sess, err := start("deis ps:scale worker=1 -a %s", testApp.Name)
 				Expect(err).NotTo(HaveOccurred())
 				Eventually(sess).Should(Say("Scaling processes... but first,"))
 				Eventually(sess, defaultMaxTimeout).Should(Say(`done in \d+s`))
