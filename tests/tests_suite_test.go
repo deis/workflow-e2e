@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"path/filepath"
 	"regexp"
 	"runtime"
 	"strings"
@@ -23,6 +24,29 @@ import (
 	"github.com/onsi/ginkgo/reporters"
 )
 
+const (
+	deisRouterServiceHost = "DEIS_ROUTER_SERVICE_HOST"
+	deisRouterServicePort = "DEIS_ROUTER_SERVICE_PORT"
+)
+
+var (
+	randSuffix                 = rand.Intn(1000)
+	testUser                   = fmt.Sprintf("test-%d", randSuffix)
+	testPassword               = "asdf1234"
+	testEmail                  = fmt.Sprintf("test-%d@deis.io", randSuffix)
+	testAdminUser              = "admin"
+	testAdminPassword          = "admin"
+	testAdminEmail             = "admin@example.com"
+	keyName                    = fmt.Sprintf("deiskey-%v", randSuffix)
+	url                        = getController()
+	debug                      = os.Getenv("DEBUG") != ""
+	homeHome                   = os.Getenv("HOME")
+	errMissingRouterHostEnvVar = fmt.Errorf("missing %s", deisRouterServiceHost)
+	defaultMaxTimeout          = 5 * time.Minute // gomega's default is 2 minutes
+)
+
+var testRoot, testHome, keyPath, gitSSH string
+
 type Cmd struct {
 	Env               []string
 	CommandLineString string
@@ -32,16 +56,6 @@ type App struct {
 	Name string
 	URL  string
 }
-
-const (
-	deisRouterServiceHost = "DEIS_ROUTER_SERVICE_HOST"
-	deisRouterServicePort = "DEIS_ROUTER_SERVICE_PORT"
-)
-
-var (
-	errMissingRouterHostEnvVar = fmt.Errorf("missing %s", deisRouterServiceHost)
-	defaultMaxTimeout          = 5 * time.Minute // gomega's default is 2 minutes
-)
 
 func getDir() string {
 	var _, inDockerContainer = os.LookupEnv("DOCKERIMAGE")
@@ -65,28 +79,12 @@ func TestTests(t *testing.T) {
 
 	enableJunit := os.Getenv("JUNIT")
 	if enableJunit == "true" {
-		junitReporter := reporters.NewJUnitReporter("junit.xml")
+		junitReporter := reporters.NewJUnitReporter(filepath.Join(homeHome, "junit.xml"))
 		RunSpecsWithDefaultAndCustomReporters(t, "Deis Workflow", []Reporter{junitReporter})
 	} else {
 		RunSpecs(t, "Deis Workflow")
 	}
 }
-
-var (
-	randSuffix        = rand.Intn(1000)
-	testUser          = fmt.Sprintf("test-%d", randSuffix)
-	testPassword      = "asdf1234"
-	testEmail         = fmt.Sprintf("test-%d@deis.io", randSuffix)
-	testAdminUser     = "admin"
-	testAdminPassword = "admin"
-	testAdminEmail    = "admin@example.com"
-	keyName           = fmt.Sprintf("deiskey-%v", randSuffix)
-	url               = getController()
-	debug             = os.Getenv("DEBUG") != ""
-	homeHome          = os.Getenv("HOME")
-)
-
-var testRoot, testHome, keyPath, gitSSH string
 
 var _ = BeforeSuite(func() {
 	SetDefaultEventuallyTimeout(10 * time.Second)
