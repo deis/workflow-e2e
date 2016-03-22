@@ -24,7 +24,7 @@ bootstrap:
 
 .PHONY: test-integration
 test-integration:
-	go test ./tests/... ${TEST_OPTS}
+	ginkgo tests/ -p -slowSpecThreshold=120.00 -succinct -progress
 
 # Precompile the test suite into a binary "_tests.test"
 .PHONY: build

@@ -41,6 +41,7 @@ var _ = Describe("Builds", func() {
 		var testApp App
 
 		BeforeEach(func() {
+			url, testUser, testPassword, testEmail, keyName = createRandomUser()
 			exampleRepo = "example-go"
 			exampleImage = fmt.Sprintf("deis/%s:latest", exampleRepo)
 			testApp.Name = getRandAppName()
@@ -63,6 +64,7 @@ var _ = Describe("Builds", func() {
 		Context("with existing app", func() {
 
 			BeforeEach(func() {
+				url, testUser, testPassword, testEmail, keyName = createRandomUser()
 				createApp(testApp.Name)
 				createBuild(exampleImage, testApp)
 			})
@@ -81,7 +83,8 @@ var _ = Describe("Builds", func() {
 			var procFile string
 
 			BeforeEach(func() {
-				cmdRetryTimeout = 10
+				url, testUser, testPassword, testEmail, keyName = createRandomUser()
+				cmdRetryTimeout = 60
 				procFile = fmt.Sprintf("worker: while true; do echo hi; sleep 3; done")
 				testApp.URL = strings.Replace(url, "deis", testApp.Name, 1)
 				createApp(testApp.Name, "--no-remote")

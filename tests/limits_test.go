@@ -2,7 +2,6 @@ package tests
 
 import (
 	"os"
-	"sync"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -13,16 +12,13 @@ var _ = Describe("Limits", func() {
 	Context("with a deployed app", func() {
 
 		var testApp App
-		once := &sync.Once{}
 
 		BeforeEach(func() {
-			// Set up the Limits test app only once and assume the suite will clean up.
-			once.Do(func() {
-				os.Chdir("example-go")
-				appName := getRandAppName()
-				createApp(appName)
-				testApp = deployApp(appName)
-			})
+			url, testUser, testPassword, testEmail, keyName = createRandomUser()
+			os.Chdir("example-go")
+			appName := getRandAppName()
+			createApp(appName)
+			testApp = deployApp(appName)
 		})
 
 		It("can list limits", func() {

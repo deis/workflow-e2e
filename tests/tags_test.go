@@ -5,7 +5,6 @@ import (
 	"os/exec"
 	"regexp"
 	"strings"
-	"sync"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo/extensions/table"
@@ -18,7 +17,6 @@ var _ = Describe("Tags", func() {
 
 	Context("with a deployed app", func() {
 		var testApp App
-		once := &sync.Once{}
 
 		BeforeEach(func() {
 			// use the "kubectl" executable in the search $PATH
@@ -26,13 +24,11 @@ var _ = Describe("Tags", func() {
 				Skip("kubectl not found in search $PATH")
 			}
 
-			// Set up the Tags test app only once and assume the suite will clean up.
-			once.Do(func() {
-				os.Chdir("example-go")
-				appName := getRandAppName()
-				createApp(appName)
-				testApp = deployApp(appName)
-			})
+			url, testUser, testPassword, testEmail, keyName = createRandomUser()
+			os.Chdir("example-go")
+			appName := getRandAppName()
+			createApp(appName)
+			testApp = deployApp(appName)
 		})
 
 		It("can set and unset tags", func() {
@@ -72,7 +68,7 @@ var _ = Describe("Tags", func() {
 			// set a valid tag
 			sess, err = start("deis tags:set %s=%s", label[0], label[1])
 			Expect(err).NotTo(HaveOccurred())
-			Eventually(sess, "5m").Should(Say("=== %s Tags", testApp.Name))
+			Eventually(sess).Should(Say("=== %s Tags", testApp.Name))
 			Eventually(sess).Should(Say(`%s\s+%s`, label[0], label[1]))
 			Eventually(sess).Should(Exit(0))
 
@@ -87,14 +83,14 @@ var _ = Describe("Tags", func() {
 			sess, err = start("deis tags:unset munkafolyamat")
 			Expect(err).NotTo(HaveOccurred())
 			// TODO: should unsetting a bogus tag return 0 (success?)
-			Eventually(sess, "5m").Should(Exit(0))
+			Eventually(sess).Should(Exit(0))
 			Eventually(sess).Should(Say("=== %s Tags", testApp.Name))
 			Eventually(sess).ShouldNot(Say(`munkafolyamat\s+yeah`, testApp.Name))
 
 			// unset a valid tag
 			sess, err = start("deis tags:unset %s", label[0])
 			Expect(err).NotTo(HaveOccurred())
-			Eventually(sess, "5m").Should(Say("=== %s Tags", testApp.Name))
+			Eventually(sess).Should(Say("=== %s Tags", testApp.Name))
 			Eventually(sess).Should(Exit(0))
 			Eventually(sess).ShouldNot(Say(`%s\s+%s`, label[0], label[1]))
 

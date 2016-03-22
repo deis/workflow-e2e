@@ -5,12 +5,15 @@ import (
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gbytes"
 	. "github.com/onsi/gomega/gexec"
+
+	// "fmt"
 )
 
 var _ = Describe("Perms", func() {
 	var testApp App
 
 	BeforeEach(func() {
+		url, testUser, testPassword, testEmail, keyName = createRandomUser()
 		testApp.Name = getRandAppName()
 		gitInit()
 		createApp(testApp.Name)
@@ -22,10 +25,12 @@ var _ = Describe("Perms", func() {
 
 	Context("when logged in as an admin user", func() {
 		BeforeEach(func() {
+			url, testUser, testPassword, testEmail, keyName = createRandomUser()
 			login(url, testAdminUser, testAdminPassword)
 		})
 
 		It("can create, list, and delete admin permissions", func() {
+
 			output, err := execute("deis perms:create %s --admin", testUser)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(output).To(
@@ -49,6 +54,7 @@ var _ = Describe("Perms", func() {
 		})
 
 		It("can create, list, and delete app permissions", func() {
+
 			sess, err := start("deis perms:create %s --app=%s", testUser, testApp.Name)
 			Expect(err).NotTo(HaveOccurred())
 			Eventually(sess).Should(Say("Adding %s to %s collaborators... done\n", testUser, testApp.Name))
@@ -72,7 +78,9 @@ var _ = Describe("Perms", func() {
 	})
 
 	Context("when logged in as a normal user", func() {
+
 		It("can't create, list, or delete admin permissions", func() {
+
 			output, err := execute("deis perms:create %s --admin", testAdminUser)
 			Expect(err).To(HaveOccurred())
 			Expect(output).To(ContainSubstring("403 Forbidden"))
@@ -88,6 +96,7 @@ var _ = Describe("Perms", func() {
 		})
 
 		It("can create, list, and delete app permissions", func() {
+
 			sess, err := start("deis perms:create %s --app=%s", testUser, testApp.Name)
 			Expect(err).NotTo(HaveOccurred())
 			Eventually(sess).Should(Say("Adding %s to %s collaborators... done\n", testUser, testApp.Name))

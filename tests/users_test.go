@@ -23,7 +23,7 @@ var _ = Describe("Users", func() {
 
 	Context("when logged in as a normal user", func() {
 		BeforeEach(func() {
-			login(url, testUser, testPassword)
+			url, testUser, testPassword, testEmail, keyName = createRandomUser()
 		})
 
 		It("can't list all users", func() {

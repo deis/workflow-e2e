@@ -22,6 +22,10 @@ var _ = Describe("Auth", func() {
 	})
 
 	Context("when logged in", func() {
+		BeforeEach(func() {
+			url, testUser, testPassword, testEmail, keyName = createRandomUser()
+		})
+
 		It("can log out", func() {
 			logout()
 		})
@@ -50,6 +54,7 @@ var _ = Describe("Auth", func() {
 
 	Context("when logged in as an admin", func() {
 		BeforeEach(func() {
+			url, testUser, testPassword, testEmail, keyName = createRandomUser()
 			login(url, testAdminUser, testAdminPassword)
 		})
 

@@ -17,13 +17,10 @@ var _ = Describe("Releases", func() {
 		exampleImage = "deis/example-go"
 
 		BeforeEach(func() {
+			url, testUser, testPassword, testEmail, keyName = createRandomUser()
 			gitInit()
 			testApp = App{Name: getRandAppName()}
 			createApp(testApp.Name)
-		})
-
-		AfterEach(func() {
-			gitClean()
 		})
 
 		It("can deploy the app", func() {

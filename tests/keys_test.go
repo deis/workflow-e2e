@@ -13,6 +13,10 @@ import (
 )
 
 var _ = Describe("Keys", func() {
+	BeforeEach(func() {
+		url, testUser, testPassword, testEmail, keyName = createRandomUser()
+	})
+
 	It("can list and remove a key", func() {
 		output, err := execute("deis keys:list")
 		Expect(err).NotTo(HaveOccurred())
@@ -21,7 +25,7 @@ var _ = Describe("Keys", func() {
 
 	It("can create and remove keys", func() {
 		tempSSHKeyName := fmt.Sprintf("deiskey-%v", rand.Intn(1000))
-		tempSSHKeyPath := createKey(tempSSHKeyName)
+		tempSSHKeyPath := createKey(testUser, tempSSHKeyName)
 
 		sess, err := start("deis keys:add %s.pub", tempSSHKeyPath)
 		Expect(err).To(BeNil())

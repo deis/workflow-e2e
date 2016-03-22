@@ -53,16 +53,12 @@ var _ = Describe("Domains", func() {
 	Context("with app yet to be deployed", func() {
 
 		BeforeEach(func() {
+			url, testUser, testPassword, testEmail, keyName = createRandomUser()
 			domain = getRandDomain()
 			gitInit()
 
 			testApp.Name = getRandAppName()
 			createApp(testApp.Name)
-		})
-
-		AfterEach(func() {
-			destroyApp(testApp)
-			gitClean()
 		})
 
 		It("can list domains", func() {
@@ -92,6 +88,7 @@ var _ = Describe("Domains", func() {
 		var cmdRetryTimeout int
 
 		BeforeEach(func() {
+			url, testUser, testPassword, testEmail, keyName = createRandomUser()
 			cmdRetryTimeout = 15
 			domain = getRandDomain()
 			os.Chdir("example-go")
@@ -102,7 +99,6 @@ var _ = Describe("Domains", func() {
 
 		AfterEach(func() {
 			defer os.Chdir("..")
-			destroyApp(testApp)
 		})
 
 		It("can add, list, and remove domains", func() {

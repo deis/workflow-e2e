@@ -42,7 +42,7 @@ var (
 	debug                      = os.Getenv("DEBUG") != ""
 	homeHome                   = os.Getenv("HOME")
 	errMissingRouterHostEnvVar = fmt.Errorf("missing %s", deisRouterServiceHost)
-	defaultMaxTimeout          = 5 * time.Minute // gomega's default is 2 minutes
+	defaultMaxTimeout          = 15 * time.Minute // gomega's default is 2 minutes
 )
 
 var testRoot, testHome, keyPath, gitSSH string
@@ -87,7 +87,7 @@ func TestTests(t *testing.T) {
 }
 
 var _ = BeforeSuite(func() {
-	SetDefaultEventuallyTimeout(10 * time.Second)
+	SetDefaultEventuallyTimeout(15 * time.Minute)
 
 	// use the "deis" executable in the search $PATH
 	output, err := exec.LookPath("deis")
@@ -104,30 +104,6 @@ var _ = BeforeSuite(func() {
 	sess, err := start("deis users:list")
 	Expect(err).To(BeNil())
 	Eventually(sess).Should(Exit(0))
-
-	sshDir := path.Join(testHome, ".ssh")
-
-	// register the test user and add a key
-	registerOrLogin(url, testUser, testPassword, testEmail)
-
-	keyPath = createKey(keyName)
-
-	// Write out a git+ssh wrapper file to avoid known_hosts warnings
-	gitSSH = path.Join(sshDir, "git-ssh")
-	sshFlags := "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
-	if debug {
-		sshFlags = sshFlags + " -v"
-	}
-	ioutil.WriteFile(gitSSH, []byte(fmt.Sprintf(
-		"#!/bin/sh\nSSH_ORIGINAL_COMMAND=\"ssh $@\"\nexec /usr/bin/ssh %s -i %s \"$@\"\n",
-		sshFlags, keyPath)), 0777)
-
-	sess, err = start("deis keys:add %s.pub", keyPath)
-	Expect(err).To(BeNil())
-	Eventually(sess).Should(Exit(0))
-	Eventually(sess).Should(Say("Uploading %s.pub to deis... done", keyName))
-
-	time.Sleep(5 * time.Second) // wait for ssh key to propagate
 })
 
 var _ = BeforeEach(func() {
@@ -142,8 +118,6 @@ var _ = BeforeEach(func() {
 	Expect(err).NotTo(HaveOccurred(), output)
 	output, err = execute(`git clone https://github.com/deis/example-perl.git`)
 	Expect(err).NotTo(HaveOccurred(), output)
-
-	login(url, testUser, testPassword)
 })
 
 var _ = AfterEach(func() {
@@ -153,15 +127,9 @@ var _ = AfterEach(func() {
 
 var _ = AfterSuite(func() {
 	os.Chdir(testHome)
-
-	cancel(url, testUser, testPassword)
-	cancel(url, testAdminUser, testAdminPassword)
-
 	os.RemoveAll(fmt.Sprintf("~/.ssh/%s*", keyName))
-
 	err := os.RemoveAll(testHome)
 	Expect(err).NotTo(HaveOccurred())
-
 	os.Setenv("HOME", homeHome)
 })
 
@@ -179,7 +147,7 @@ func registerOrLogin(url, username, password, email string) {
 
 	sess.Wait()
 
-	if strings.Contains(string(sess.Err.Contents()), "must be unique") {
+	if strings.Contains(string(sess.Err.Contents()), "already exists") {
 		// Already registered
 		login(url, username, password)
 	} else {
@@ -261,10 +229,9 @@ func startCmd(command Cmd) (*Session, error) {
 	return Start(cmd, GinkgoWriter, GinkgoWriter)
 }
 
-func createKey(name string) string {
-	keyPath := path.Join(testHome, ".ssh", name)
-	os.MkdirAll(path.Join(testHome, ".ssh"), 0777)
-	// create the key under ~/.ssh/<name> if it doesn't already exist
+func createKey(testUser string, name string) string {
+	keyPath := path.Join(testHome, testUser, ".ssh", name)
+	os.MkdirAll(path.Join(testHome, testUser, ".ssh"), 0777)
 	if _, err := os.Stat(keyPath); os.IsNotExist(err) {
 		sess, err := start("ssh-keygen -q -t rsa -b 4096 -C %s -f %s -N ''", name, keyPath)
 		Expect(err).To(BeNil())
@@ -359,7 +326,7 @@ func deployApp(name string) App {
 	app := App{Name: name, URL: strings.Replace(url, "deis", name, 1)}
 	cmd, err := start("GIT_SSH=%s git push deis master", gitSSH)
 	Expect(err).NotTo(HaveOccurred())
-	Eventually(cmd.Err, "5m").Should(Say(`Done, %s:v\d deployed to Deis`, app.Name))
+	Eventually(cmd.Err).Should(Say(`Done, %s:v\d deployed to Deis`, app.Name))
 	Eventually(cmd).Should(Exit(0))
 
 	return app
@@ -397,4 +364,37 @@ func gitClean() {
 	cmd, err := start("rm -rf .git")
 	Expect(err).NotTo(HaveOccurred())
 	Eventually(cmd).Should(Exit(0))
+}
+
+func createRandomUser() (string, string, string, string, string) {
+	randSuffix := rand.Intn(100000)
+	testUser := fmt.Sprintf("test-%d", randSuffix)
+	testPassword := "asdf1234"
+	testEmail := fmt.Sprintf("test-%d@deis.io", randSuffix)
+	keyName := fmt.Sprintf("deiskey-%v", randSuffix)
+
+	sshDir := path.Join(testHome, testUser, ".ssh")
+
+	// register the test user and add a key
+	registerOrLogin(url, testUser, testPassword, testEmail)
+
+	keyPath := createKey(testUser, keyName)
+
+	// Write out a git+ssh wrapper file to avoid known_hosts warnings
+	gitSSH = path.Join(sshDir, "git-ssh")
+	sshFlags := "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+	if debug {
+		sshFlags = sshFlags + " -v"
+	}
+	ioutil.WriteFile(gitSSH, []byte(fmt.Sprintf(
+		"#!/bin/sh\nSSH_ORIGINAL_COMMAND=\"ssh $@\"\nexec /usr/bin/ssh %s -i %s \"$@\"\n",
+		sshFlags, keyPath)), 0777)
+
+	sess, err := start("deis keys:add %s.pub", keyPath)
+	Expect(err).To(BeNil())
+	Eventually(sess).Should(Exit(0))
+	Eventually(sess).Should(Say("Uploading %s.pub to deis... done", keyName))
+
+	time.Sleep(5 * time.Second) // wait for ssh key to propagate
+	return url, testUser, testPassword, testEmail, keyName
 }

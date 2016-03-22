@@ -141,6 +141,7 @@ var _ = Describe("Certs", func() {
 
 	Context("with an app yet to be deployed", func() {
 		BeforeEach(func() {
+			url, testUser, testPassword, testEmail, keyName = createRandomUser()
 			gitInit()
 			testApp = App{Name: getRandAppName()}
 			createApp(testApp.Name)
@@ -155,13 +156,9 @@ var _ = Describe("Certs", func() {
 
 		It("can add, attach, list, and remove certs", func() {
 			addDomain(domain, testApp.Name)
-
 			addCert(certName, certs["wildcard"].CertPath, certs["wildcard"].KeyPath)
-
 			Eventually(certsInfo(certName)).Should(Say("No connected domains"))
-
 			attachCert(certName, domain)
-
 			Eventually(certsInfo(certName)).Should(Say(domain))
 		})
 	})
@@ -170,6 +167,7 @@ var _ = Describe("Certs", func() {
 		once := &sync.Once{}
 
 		BeforeEach(func() {
+			url, testUser, testPassword, testEmail, keyName = createRandomUser()
 			// Set up the test app only once and assume the suite will clean up.
 			once.Do(func() {
 				os.Chdir(exampleRepo)

@@ -21,6 +21,7 @@ var _ = Describe("Apps", func() {
 	var testApp App
 
 	BeforeEach(func() {
+		url, testUser, testPassword, testEmail, keyName = createRandomUser()
 		testApp.Name = getRandAppName()
 	})
 
@@ -57,19 +58,11 @@ var _ = Describe("Apps", func() {
 	})
 
 	Context("when creating an app", func() {
-		var cleanup bool
 
 		BeforeEach(func() {
-			cleanup = true
+			url, testUser, testPassword, testEmail, keyName = createRandomUser()
 			testApp.Name = getRandAppName()
 			gitInit()
-		})
-
-		AfterEach(func() {
-			if cleanup {
-				destroyApp(testApp)
-				gitClean()
-			}
 		})
 
 		It("creates an app with a git remote", func() {
@@ -87,10 +80,6 @@ var _ = Describe("Apps", func() {
 				Say("created %s", testApp.Name),
 				Say("remote available at ")))
 			Eventually(cmd).ShouldNot(Say("Git remote deis added"))
-
-			cleanup = false
-			cmd = destroyApp(testApp)
-			Eventually(cmd).ShouldNot(Say("Git remote deis removed"))
 		})
 
 		It("creates an app with a custom buildpack", func() {
@@ -109,11 +98,10 @@ var _ = Describe("Apps", func() {
 	})
 
 	Context("with a deployed app", func() {
-		var cleanup bool
 		var testApp App
 
 		BeforeEach(func() {
-			cleanup = true
+			url, testUser, testPassword, testEmail, keyName = createRandomUser()
 			os.Chdir("example-go")
 			appName := getRandAppName()
 			createApp(appName)
@@ -122,9 +110,6 @@ var _ = Describe("Apps", func() {
 
 		AfterEach(func() {
 			defer os.Chdir("..")
-			if cleanup {
-				destroyApp(testApp)
-			}
 		})
 
 		It("can't create an existing app", func() {
@@ -164,32 +149,18 @@ var _ = Describe("Apps", func() {
 			sess, _ := start("deis info -a %s", testApp.Name)
 			Eventually(sess).Should(Exit(1))
 			Eventually(sess.Err).Should(Say("You do not have permission to perform this action."))
-			// destroy it ourselves because the spec teardown cannot destroy as regular user
-			cleanup = false
-			login(url, testAdminUser, testAdminPassword)
-			destroyApp(testApp)
-			// log back in and continue with the show
-			login(url, testUser, testPassword)
 		})
 	})
 
 	Context("with a custom buildpack deployed app", func() {
-		var cleanup bool
 		var testApp App
 
 		BeforeEach(func() {
-			cleanup = true
+			url, testUser, testPassword, testEmail, keyName = createRandomUser()
 			os.Chdir("example-perl")
 			appName := getRandAppName()
 			createApp(appName, "--buildpack", "https://github.com/miyagawa/heroku-buildpack-perl.git")
 			testApp = deployApp(appName)
-		})
-
-		AfterEach(func() {
-			defer os.Chdir("..")
-			if cleanup {
-				destroyApp(testApp)
-			}
 		})
 
 		It("can get app info", func() {

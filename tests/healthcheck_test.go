@@ -15,7 +15,7 @@ var _ = Describe("Healthcheck", func() {
 	Context("with a deployed app", func() {
 		// create and deploy an app
 		BeforeEach(func() {
-			login(url, testUser, testPassword)
+			url, testUser, testPassword, testEmail, keyName = createRandomUser()
 			sess, err := start("deis apps:create %s", appName)
 			Expect(err).To(BeNil())
 			Eventually(sess).Should(Exit(0))
@@ -24,16 +24,6 @@ var _ = Describe("Healthcheck", func() {
 			Expect(err).To(BeNil())
 			Eventually(sess).Should(Exit(0))
 			Eventually(sess).Should(Say("Creating build... done"))
-		})
-
-		// destroy the app
-		AfterEach(func() {
-			sess, err := start("deis apps:destroy --confirm=%s", appName)
-			Expect(err).To(BeNil())
-			Eventually(sess).Should(Exit(0))
-			Eventually(sess).Should(Say("Destroying %s...", appName))
-			Eventually(sess).Should(Say("done in "))
-			Eventually(sess).Should(Say("Git remote deis removed"))
 		})
 
 		// TODO: test is broken
