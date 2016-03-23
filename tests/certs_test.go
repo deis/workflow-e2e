@@ -8,7 +8,6 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-	"sync"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo/extensions/table"
@@ -26,76 +25,78 @@ type Cert struct {
 // TODO: move to sister dir/package 'common'
 //       for example, these could live in common/certs.go
 // certs-specific common actions and expectations
-func listCerts() *Session {
-	sess, err := start("deis certs:list")
+func listCerts(profile string) *Session {
+	sess, err := start("deis certs:list", profile)
 	Expect(err).NotTo(HaveOccurred())
 	Eventually(sess).Should(Exit(0))
-
+	Expect(err).NotTo(HaveOccurred())
 	return sess
 }
 
-func removeCerts(certs []string) {
+func removeCerts(profile string, certs []string) {
 	for _, cert := range certs {
-		sess, err := start("deis certs:remove %s", cert)
-		Expect(err).NotTo(HaveOccurred())
+		sess, err := start("deis certs:remove %s", profile, cert)
 		Eventually(sess).Should(Say("Removing %s...", cert))
 		Eventually(sess).Should(Say("done"))
+		Expect(err).NotTo(HaveOccurred())
 		Eventually(sess).Should(Exit(0))
+		Expect(err).NotTo(HaveOccurred())
 	}
 
-	Eventually(listCerts()).Should(Say("No certs"))
+	Eventually(listCerts(profile)).Should(Say("No certs"))
 }
 
-func addCert(certName, cert, key string) {
-	sess, err := start("deis certs:add %s %s %s", certName, cert, key)
-	Expect(err).NotTo(HaveOccurred())
+func addCert(profile, certName, cert, key string) {
+	sess, err := start("deis certs:add %s %s %s", profile, certName, cert, key)
 	Eventually(sess).Should(Say("Adding SSL endpoint..."))
-	Eventually(sess).Should(Say("done"))
+	Eventually(sess, defaultMaxTimeout).Should(Say("done"))
+	Expect(err).NotTo(HaveOccurred())
 	Eventually(sess).Should(Exit(0))
+	Expect(err).NotTo(HaveOccurred())
 
-	Eventually(listCerts().Wait().Out.Contents()).Should(ContainSubstring(certName))
+	Eventually(listCerts(profile).Wait().Out.Contents()).Should(ContainSubstring(certName))
 }
 
-func attachCert(certName, domain string) {
-	attachOrDetachCert(certName, domain, "attach")
+func attachCert(profile, certName, domain string) {
+	attachOrDetachCert(profile, certName, domain, "attach")
 }
 
-func detachCert(certName, domain string) {
-	attachOrDetachCert(certName, domain, "detach")
+func detachCert(profile, certName, domain string) {
+	attachOrDetachCert(profile, certName, domain, "detach")
 }
 
-func attachOrDetachCert(certName, domain, attachOrDetach string) {
+func attachOrDetachCert(profile, certName, domain, attachOrDetach string) {
 	// Explicitly build literal substring since 'domain'
 	// may be a wildcard domain ('*.foo.com') and we don't want Gomega
 	// interpreting this string as a regexp
 	var substring string
 
-	sess, err := start("deis certs:%s %s %s", attachOrDetach, certName, domain)
-	Expect(err).NotTo(HaveOccurred())
+	sess, err := start("deis certs:%s %s %s", profile, attachOrDetach, certName, domain)
 	if attachOrDetach == "attach" {
 		substring = fmt.Sprintf("Attaching certificate %s to domain %s...", certName, domain)
 	} else {
 		substring = fmt.Sprintf("Detaching certificate %s from domain %s...", certName, domain)
 	}
 	Eventually(sess.Wait().Out.Contents()).Should(ContainSubstring(substring))
-	Eventually(sess).Should(Say("done"))
+	Eventually(sess, defaultMaxTimeout).Should(Say("done"))
 	Eventually(sess).Should(Exit(0))
+	Expect(err).NotTo(HaveOccurred())
 }
 
-func certsInfo(certName string) *Session {
-	sess, err := start("deis certs:info %s", certName)
-	Expect(err).NotTo(HaveOccurred())
+func certsInfo(profile, certName string) *Session {
+	sess, err := start("deis certs:info %s", profile, certName)
 	Eventually(sess).Should(Say("=== %s Certificate", certName))
 	Eventually(sess).Should(Exit(0))
+	Expect(err).NotTo(HaveOccurred())
 
 	return sess
 }
 
 func verifySSLEndpoint(customSSLEndpoint, domain string, expectedStatusCode int) {
-	maxRetryIterations := 15                         // ~1 iteration per second
+	cmdRetryTimeout := 60
 	domain = strings.Replace(domain, "*", "blah", 1) // replace asterix if wildcard domain
 	curlCmd := Cmd{CommandLineString: fmt.Sprintf(`curl -k -H "Host: %s" -sL -w "%%{http_code}\\n" "%s" -o /dev/null`, domain, customSSLEndpoint)}
-	Eventually(cmdWithRetry(curlCmd, strconv.Itoa(expectedStatusCode), maxRetryIterations)).Should(BeTrue())
+	Eventually(cmdWithRetry(curlCmd, strconv.Itoa(expectedStatusCode), cmdRetryTimeout)).Should(BeTrue())
 }
 
 var _ = Describe("Certs", func() {
@@ -105,6 +106,7 @@ var _ = Describe("Certs", func() {
 	var certNames []string
 	var customSSLEndpoint string
 	var exampleRepo = "example-go"
+	var testData TestData
 
 	certPath := path.Join(getDir(), "files/certs")
 	certs := map[string]Cert{
@@ -126,55 +128,51 @@ var _ = Describe("Certs", func() {
 			KeyPath:  fmt.Sprintf("%s/bar.com.key", certPath)},
 	}
 
-	cleanUpCerts := func(certNames []string) {
-		certsListing := string(listCerts().Wait().Out.Contents()[:])
+	cleanUpCerts := func(profile string, certNames []string) {
+		certsListing := string(listCerts(testData.Profile).Wait().Out.Contents()[:])
 		if !strings.Contains(certsListing, "No certs") {
-			removeCerts(certNames)
+			removeCerts(profile, certNames)
 		}
 	}
 
-	cleanUpDomains := func(domains []string) {
+	cleanUpDomains := func(profile string, domains []string) {
 		for _, domain := range domains {
-			removeDomain(domain, testApp.Name)
+			removeDomain(profile, domain, testApp.Name)
 		}
 	}
 
 	Context("with an app yet to be deployed", func() {
 		BeforeEach(func() {
-			url, testUser, testPassword, testEmail, keyName = createRandomUser()
+			testData = initTestData()
 			gitInit()
 			testApp = App{Name: getRandAppName()}
-			createApp(testApp.Name)
+			createApp(testData.Profile, testApp.Name)
 			domain = getRandDomain()
 			certName = strings.Replace(domain, ".", "-", -1)
 			certNames = []string{certName}
 		})
 
 		AfterEach(func() {
-			cleanUpCerts(certNames)
+			cleanUpCerts(testData.Profile, certNames)
 		})
 
 		It("can add, attach, list, and remove certs", func() {
-			addDomain(domain, testApp.Name)
-			addCert(certName, certs["wildcard"].CertPath, certs["wildcard"].KeyPath)
-			Eventually(certsInfo(certName)).Should(Say("No connected domains"))
-			attachCert(certName, domain)
-			Eventually(certsInfo(certName)).Should(Say(domain))
+			addDomain(testData.Profile, domain, testApp.Name)
+			addCert(testData.Profile, certName, certs["wildcard"].CertPath, certs["wildcard"].KeyPath)
+			Eventually(certsInfo(testData.Profile, certName)).Should(Say("No connected domains"))
+			attachCert(testData.Profile, certName, domain)
+			Eventually(certsInfo(testData.Profile, certName)).Should(Say(domain))
 		})
 	})
 
 	Context("with a deployed app", func() {
-		once := &sync.Once{}
 
 		BeforeEach(func() {
-			url, testUser, testPassword, testEmail, keyName = createRandomUser()
-			// Set up the test app only once and assume the suite will clean up.
-			once.Do(func() {
-				os.Chdir(exampleRepo)
-				appName := getRandAppName()
-				createApp(appName)
-				testApp = deployApp(appName)
-			})
+			testData = initTestData()
+			os.Chdir(exampleRepo)
+			appName := getRandAppName()
+			createApp(testData.Profile, appName)
+			testApp = deployApp(testData.Profile, appName)
 			domain = getRandDomain()
 			certName = strings.Replace(domain, ".", "-", -1)
 			certNames = []string{certName}
@@ -186,7 +184,7 @@ var _ = Describe("Certs", func() {
 
 		AfterEach(func() {
 			defer os.Chdir("..")
-			cleanUpCerts(certNames)
+			cleanUpCerts(testData.Profile, certNames)
 		})
 
 		It("can specify limit to number of certs returned by certs:list", func() {
@@ -194,94 +192,94 @@ var _ = Describe("Certs", func() {
 			certNames = append(certNames, alternateCertName)
 			randDomainRegExp := `my-custom-[0-9]{0,9}-domain-com`
 
-			addCert(certName, certs["wildcard"].CertPath, certs["wildcard"].KeyPath)
-			addCert(alternateCertName, certs["wildcard"].CertPath, certs["wildcard"].KeyPath)
+			addCert(testData.Profile, certName, certs["wildcard"].CertPath, certs["wildcard"].KeyPath)
+			addCert(testData.Profile, alternateCertName, certs["wildcard"].CertPath, certs["wildcard"].KeyPath)
 
-			sess, err := start("deis certs:list -l 0")
-			Expect(err).NotTo(HaveOccurred())
+			sess, err := start("deis certs:list -l 0", testData.Profile)
 			Eventually(sess).Should(Say("No certs"))
 			Eventually(sess).Should(Exit(0))
-
-			sess, err = start("deis certs:list --limit=1")
 			Expect(err).NotTo(HaveOccurred())
+
+			sess, err = start("deis certs:list --limit=1", testData.Profile)
 			Eventually(sess).Should(Say(randDomainRegExp))
 			Eventually(sess).Should(Not(Say(randDomainRegExp)))
 			Eventually(sess).Should(Exit(0))
-
-			sess, err = start("deis certs:list")
 			Expect(err).NotTo(HaveOccurred())
+
+			sess, err = start("deis certs:list", testData.Profile)
 			Eventually(sess).Should(Say(randDomainRegExp))
 			Eventually(sess).Should(Say(randDomainRegExp))
 			Eventually(sess).Should(Exit(0))
+			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("can add, attach, list, and remove certs... improperly", func() {
 			nonExistentCert := "non-existent.crt"
 			nonExistentCertName := "non-existent-cert"
 
-			addDomain(domain, testApp.Name)
+			addDomain(testData.Profile, domain, testApp.Name)
 
 			// attempt to add cert with improper cert name (includes periods)
-			sess, err := start("deis certs:add %s %s %s", domain, certs["wildcard"].CertPath, certs["wildcard"].KeyPath)
-			Expect(err).NotTo(HaveOccurred())
+			sess, err := start("deis certs:add %s %s %s", testData.Profile, domain, certs["wildcard"].CertPath, certs["wildcard"].KeyPath)
 			Eventually(sess.Err).Should(Say("400 Bad Request"))
 			Eventually(sess).Should(Exit(1))
+			Expect(err).NotTo(HaveOccurred())
 
 			// attempt to add cert with cert and key file swapped
-			sess, err = start("deis certs:add %s %s %s", certName, certs["wildcard"].KeyPath, certs["wildcard"].CertPath)
-			Expect(err).NotTo(HaveOccurred())
+			sess, err = start("deis certs:add %s %s %s", testData.Profile, certName, certs["wildcard"].KeyPath, certs["wildcard"].CertPath)
 			Eventually(sess.Err).Should(Say("400 Bad Request"))
 			Eventually(sess).Should(Exit(1))
+			Expect(err).NotTo(HaveOccurred())
 
 			// attempt to add cert with non-existent keys
-			sess, err = start("deis certs:add %s %s %s", certName, nonExistentCert, "non-existent.key")
-			Expect(err).NotTo(HaveOccurred())
+			sess, err = start("deis certs:add %s %s %s", testData.Profile, certName, nonExistentCert, "non-existent.key")
 			Eventually(sess.Err).Should(Say("open %s: no such file or directory", nonExistentCert))
 			Eventually(sess).Should(Exit(1))
+			Expect(err).NotTo(HaveOccurred())
 
 			// attempt to remove non-existent cert
-			sess, err = start("deis certs:remove %s", nonExistentCertName)
-			Expect(err).NotTo(HaveOccurred())
+			sess, err = start("deis certs:remove %s", testData.Profile, nonExistentCertName)
 			Eventually(sess.Err).Should(Say("404 Not Found"))
 			Eventually(sess).Should(Exit(1))
+			Expect(err).NotTo(HaveOccurred())
 
 			// attempt to get info on non-existent cert
-			sess, err = start("deis certs:info %s", nonExistentCertName)
-			Expect(err).NotTo(HaveOccurred())
+			sess, err = start("deis certs:info %s", testData.Profile, nonExistentCertName)
 			Eventually(sess.Err).Should(Say("404 Not Found"))
 			Eventually(sess).Should(Exit(1))
+			Expect(err).NotTo(HaveOccurred())
 
 			// attempt to attach non-existent cert
-			sess, err = start("deis certs:attach %s %s", nonExistentCertName, domain)
-			Expect(err).NotTo(HaveOccurred())
+			sess, err = start("deis certs:attach %s %s", testData.Profile, nonExistentCertName, domain)
 			Eventually(sess.Err).Should(Say("404 Not Found"))
 			Eventually(sess).Should(Exit(1))
+			Expect(err).NotTo(HaveOccurred())
 
 			// attempt to detach non-existent cert
-			sess, err = start("deis certs:detach %s %s", nonExistentCertName, domain)
-			Expect(err).NotTo(HaveOccurred())
+			sess, err = start("deis certs:detach %s %s", testData.Profile, nonExistentCertName, domain)
 			Eventually(sess.Err).Should(Say("404 Not Found"))
 			Eventually(sess).Should(Exit(1))
+			Expect(err).NotTo(HaveOccurred())
 
-			addCert(certName, certs["wildcard"].CertPath, certs["wildcard"].KeyPath)
+			addCert(testData.Profile, certName, certs["wildcard"].CertPath, certs["wildcard"].KeyPath)
 
 			// attempt to attach to non-existent domain
-			sess, err = start("deis certs:attach %s %s", certName, "non-existent-domain")
-			Expect(err).NotTo(HaveOccurred())
+			sess, err = start("deis certs:attach %s %s", testData.Profile, certName, "non-existent-domain")
 			Eventually(sess.Err).Should(Say("404 Not Found"))
 			Eventually(sess).Should(Exit(1))
+			Expect(err).NotTo(HaveOccurred())
 
 			// attempt to detach from non-existent domain
-			sess, err = start("deis certs:detach %s %s", certName, "non-existent-domain")
-			Expect(err).NotTo(HaveOccurred())
+			sess, err = start("deis certs:detach %s %s", testData.Profile, certName, "non-existent-domain")
 			Eventually(sess.Err).Should(Say("404 Not Found"))
 			Eventually(sess).Should(Exit(1))
+			Expect(err).NotTo(HaveOccurred())
 
 			// attempt to remove non-existent cert
-			sess, err = start("deis certs:remove %s", nonExistentCertName)
-			Expect(err).NotTo(HaveOccurred())
+			sess, err = start("deis certs:remove %s", testData.Profile, nonExistentCertName)
 			Eventually(sess.Err).Should(Say("404 Not Found"))
 			Eventually(sess).Should(Exit(1))
+			Expect(err).NotTo(HaveOccurred())
 		})
 
 		Context("multiple domains and certs", func() {
@@ -294,7 +292,7 @@ var _ = Describe("Certs", func() {
 
 			AfterEach(func() {
 				// need to cleanup domains as they are not named randomly as above
-				cleanUpDomains(domainNames)
+				cleanUpDomains(testData.Profile, domainNames)
 			})
 
 			It("can attach/detach 2 certs (1 wildcard) to/from 3 domains (1 wildcard)", func() {
@@ -303,24 +301,24 @@ var _ = Describe("Certs", func() {
 
 				// Add all 3 domains
 				for _, domain := range domains {
-					addDomain(domain, testApp.Name)
+					addDomain(testData.Profile, domain, testApp.Name)
 				}
 
 				// Add 2 certs
-				addCert(sharedCert.Name, sharedCert.CertPath, sharedCert.KeyPath)
-				addCert(certs["bar"].Name, certs["bar"].CertPath, certs["bar"].KeyPath)
+				addCert(testData.Profile, sharedCert.Name, sharedCert.CertPath, sharedCert.KeyPath)
+				addCert(testData.Profile, certs["bar"].Name, certs["bar"].CertPath, certs["bar"].KeyPath)
 
 				// Share wildcard cert betwtixt two domains, attach the other
 				for _, domain := range []string{domains["wildcard"], domains["foo"]} {
-					attachCert(sharedCert.Name, domain)
+					attachCert(testData.Profile, sharedCert.Name, domain)
 				}
-				attachCert(certs["bar"].Name, domains["bar"])
+				attachCert(testData.Profile, certs["bar"].Name, domains["bar"])
 
 				// With multiple strings to check, use substrings as ordering is non-deterministic
 				// (Should(Say()) enforces strict ordering)
 				bothDomains := fmt.Sprintf("%s,%s", domains["wildcard"], domains["foo"])
-				Eventually(certsInfo(sharedCert.Name).Wait().Out.Contents()).Should(ContainSubstring(bothDomains))
-				Eventually(certsInfo(certs["bar"].Name)).Should(Say(domains["bar"]))
+				Eventually(certsInfo(testData.Profile, sharedCert.Name).Wait().Out.Contents()).Should(ContainSubstring(bothDomains))
+				Eventually(certsInfo(testData.Profile, certs["bar"].Name)).Should(Say(domains["bar"]))
 
 				// All SSL endpoints should be good to go
 				for _, domain := range domains {
@@ -328,12 +326,12 @@ var _ = Describe("Certs", func() {
 				}
 
 				// Detach shared cert from one domain and re-check endpoints
-				detachCert(sharedCert.Name, domains["wildcard"])
-				Eventually(certsInfo(sharedCert.Name)).Should(Say(domains["foo"]))
+				detachCert(testData.Profile, sharedCert.Name, domains["wildcard"])
+				Eventually(certsInfo(testData.Profile, sharedCert.Name)).Should(Say(domains["foo"]))
 				verifySSLEndpoint(customSSLEndpoint, domains["wildcard"], http.StatusNotFound)
 				verifySSLEndpoint(customSSLEndpoint, domains["foo"], http.StatusOK)
 
-				detachCert(certs["bar"].Name, domains["bar"])
+				detachCert(testData.Profile, certs["bar"].Name, domains["bar"])
 				verifySSLEndpoint(customSSLEndpoint, domains["bar"], http.StatusNotFound)
 			})
 
@@ -354,22 +352,19 @@ var _ = Describe("Certs", func() {
 					certNames = []string{certName}
 					domainNames = []string{domain}
 
-					addDomain(domain, testApp.Name)
-
-					addCert(certName, cert, key)
-
-					attachCert(certName, domain)
-
-					Eventually(certsInfo(certName).Wait().Out.Contents()).Should(ContainSubstring(domain))
+					addDomain(testData.Profile, domain, testApp.Name)
+					addCert(testData.Profile, certName, cert, key)
+					attachCert(testData.Profile, certName, domain)
+					Eventually(certsInfo(testData.Profile, certName).Wait().Out.Contents()).Should(ContainSubstring(domain))
 
 					verifySSLEndpoint(customSSLEndpoint, domain, http.StatusOK)
 					for _, otherDomain := range getOtherDomains(domain, domains) {
 						verifySSLEndpoint(customSSLEndpoint, otherDomain, http.StatusNotFound)
 					}
 
-					detachCert(certName, domain)
+					detachCert(testData.Profile, certName, domain)
 
-					Eventually(certsInfo(certName)).Should(Say("No connected domains"))
+					Eventually(certsInfo(testData.Profile, certName)).Should(Say("No connected domains"))
 
 					verifySSLEndpoint(customSSLEndpoint, domain, http.StatusNotFound)
 				},

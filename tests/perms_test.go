@@ -5,117 +5,70 @@ import (
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gbytes"
 	. "github.com/onsi/gomega/gexec"
-
-	// "fmt"
 )
 
 var _ = Describe("Perms", func() {
-	var testApp App
-
-	BeforeEach(func() {
-		url, testUser, testPassword, testEmail, keyName = createRandomUser()
-		testApp.Name = getRandAppName()
-		gitInit()
-		createApp(testApp.Name)
-	})
-
 	AfterEach(func() {
 		gitClean()
 	})
 
-	Context("when logged in as an admin user", func() {
-		BeforeEach(func() {
-			url, testUser, testPassword, testEmail, keyName = createRandomUser()
-			login(url, testAdminUser, testAdminPassword)
-		})
-
-		It("can create, list, and delete admin permissions", func() {
-
-			output, err := execute("deis perms:create %s --admin", testUser)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(output).To(
-				ContainSubstring("Adding %s to system administrators... done\n", testUser))
-			output, err = execute("deis perms:list --admin")
-			Expect(err).NotTo(HaveOccurred())
-			Expect(output).To(SatisfyAll(
-				HavePrefix("=== Administrators"),
-				ContainSubstring(testUser),
-				ContainSubstring(testAdminUser)))
-			output, err = execute("deis perms:delete %s --admin", testUser)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(output).To(
-				ContainSubstring("Removing %s from system administrators... done", testUser))
-			output, err = execute("deis perms:list --admin")
-			Expect(err).NotTo(HaveOccurred())
-			Expect(output).To(SatisfyAll(
-				HavePrefix("=== Administrators"),
-				ContainSubstring(testAdminUser)))
-			Expect(output).NotTo(ContainSubstring(testUser))
-		})
-
-		It("can create, list, and delete app permissions", func() {
-
-			sess, err := start("deis perms:create %s --app=%s", testUser, testApp.Name)
-			Expect(err).NotTo(HaveOccurred())
-			Eventually(sess).Should(Say("Adding %s to %s collaborators... done\n", testUser, testApp.Name))
-
-			sess, err = start("deis perms:list --app=%s", testApp.Name)
-			Expect(err).NotTo(HaveOccurred())
-			Eventually(sess).Should(Say("=== %s's Users", testApp.Name))
-			Eventually(sess).Should(Say("%s", testUser))
-
-			sess, err = start("deis perms:delete %s --app=%s", testUser, testApp.Name)
-			Expect(err).NotTo(HaveOccurred())
-			Eventually(sess).Should(Say("Removing %s from %s collaborators... done", testUser, testApp.Name))
-
-			sess, err = start("deis perms:list --app=%s", testApp.Name)
-			Expect(err).NotTo(HaveOccurred())
-			Eventually(sess).Should(Say("=== %s's Users", testApp.Name))
-			Eventually(sess).ShouldNot(Say("%s", testUser))
-
-			Eventually(sess).Should(Exit(0))
-		})
-	})
-
 	Context("when logged in as a normal user", func() {
+		var testData TestData
+		var testData2 TestData
+		var testApp App
+
+		BeforeEach(func() {
+			testData = initTestData()
+			testData2 = initTestData()
+			testApp.Name = getRandAppName()
+			gitInit()
+			createApp(testData.Profile, testApp.Name)
+		})
 
 		It("can't create, list, or delete admin permissions", func() {
-
-			output, err := execute("deis perms:create %s --admin", testAdminUser)
-			Expect(err).To(HaveOccurred())
-			Expect(output).To(ContainSubstring("403 Forbidden"))
-			output, err = execute("deis perms:list --admin")
-			Expect(err).To(HaveOccurred())
-			Expect(output).To(ContainSubstring("403 Forbidden"))
-			output, err = execute("deis perms:delete %s --admin", testAdminUser)
-			Expect(err).To(HaveOccurred())
-			Expect(output).To(ContainSubstring("403 Forbidden"))
-			output, err = execute("deis perms:list --admin")
-			Expect(err).To(HaveOccurred())
-			Expect(output).To(ContainSubstring("403 Forbidden"))
+			sess, err := start("deis perms:create %s --admin", testData.Profile, adminTestData.Username)
+			Eventually(sess, defaultMaxTimeout).Should(Say("Adding admin to system administrators..."))
+			Eventually(sess.Err).Should(Say("403 Forbidden"))
+			Eventually(sess).Should(Exit(1))
+			Expect(err).NotTo(HaveOccurred())
+			sess, err = start("deis perms:list --admin", testData.Profile)
+			Eventually(sess).Should(Exit(1))
+			Expect(err).NotTo(HaveOccurred())
+			Eventually(sess.Err).Should(Say("403 Forbidden"))
+			Eventually(sess).Should(Exit(1))
+			Expect(err).NotTo(HaveOccurred())
+			sess, err = start("deis perms:delete %s --admin", testData.Profile, adminTestData.Username)
+			Eventually(sess.Err, defaultMaxTimeout).Should(Say("403 Forbidden"))
+			Eventually(sess).Should(Exit(1))
+			Expect(err).NotTo(HaveOccurred())
+			sess, err = start("deis perms:list --admin", testData.Profile)
+			Eventually(sess.Err).Should(Say("403 Forbidden"))
+			Eventually(sess).Should(Exit(1))
+			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("can create, list, and delete app permissions", func() {
-
-			sess, err := start("deis perms:create %s --app=%s", testUser, testApp.Name)
-			Expect(err).NotTo(HaveOccurred())
-			Eventually(sess).Should(Say("Adding %s to %s collaborators... done\n", testUser, testApp.Name))
-
-			sess, err = start("deis perms:list --app=%s", testApp.Name)
-			Expect(err).NotTo(HaveOccurred())
-			Eventually(sess).Should(Say("=== %s's Users", testApp.Name))
-			Eventually(sess).Should(Say("%s", testUser))
-
-			sess, err = start("deis perms:delete %s --app=%s", testUser, testApp.Name)
-			Expect(err).NotTo(HaveOccurred())
-			Eventually(sess).Should(Say("Removing %s from %s collaborators... done", testUser, testApp.Name))
-
-			sess, err = start("deis perms:list --app=%s", testApp.Name)
-			Expect(err).NotTo(HaveOccurred())
-			Eventually(sess).Should(Say("=== %s's Users", testApp.Name))
-			Eventually(sess).ShouldNot(Say("%s", testUser))
-
+			sess, err := start("deis perms:create %s --app=%s", testData.Profile, testData2.Username, testApp.Name)
+			Eventually(sess, defaultMaxTimeout).Should(Say("Adding %s to %s collaborators... done\n", testData2.Username, testApp.Name))
 			Eventually(sess).Should(Exit(0))
+			Expect(err).NotTo(HaveOccurred())
+
+			sess, err = start("deis perms:list --app=%s", testData.Profile, testApp.Name)
+			Eventually(sess).Should(Say("=== %s's Users", testApp.Name))
+			Eventually(sess).Should(Say("%s", testData2.Username))
+			Eventually(sess).Should(Exit(0))
+			Expect(err).NotTo(HaveOccurred())
+
+			sess, err = start("deis perms:delete %s --app=%s", testData.Profile, testData2.Username, testApp.Name)
+			Eventually(sess, defaultMaxTimeout).Should(Say("Removing %s from %s collaborators... done", testData2.Username, testApp.Name))
+			Eventually(sess).Should(Exit(0))
+			Expect(err).NotTo(HaveOccurred())
+
+			sess, err = start("deis perms:list --app=%s", testData.Profile, testApp.Name)
+			Eventually(sess).Should(Say("=== %s's Users", testApp.Name))
+			Eventually(sess).ShouldNot(Say("%s", testData2.Username))
+			Eventually(sess).Should(Exit(0))
+			Expect(err).NotTo(HaveOccurred())
 		})
 	})
 })

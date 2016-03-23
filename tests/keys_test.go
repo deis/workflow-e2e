@@ -13,30 +13,34 @@ import (
 )
 
 var _ = Describe("Keys", func() {
+	var testData TestData
+
 	BeforeEach(func() {
-		url, testUser, testPassword, testEmail, keyName = createRandomUser()
+		testData = initTestData()
 	})
 
 	It("can list and remove a key", func() {
-		output, err := execute("deis keys:list")
+		sess, err := start("deis keys:list", testData.Profile)
+		Eventually(sess, defaultMaxTimeout).Should(Say(fmt.Sprintf("%s ssh-rsa", testData.KeyName)))
+		Eventually(sess).Should(Exit(0))
 		Expect(err).NotTo(HaveOccurred())
-		Expect(output).To(ContainSubstring("%s ssh-rsa", keyName))
 	})
 
 	It("can create and remove keys", func() {
 		tempSSHKeyName := fmt.Sprintf("deiskey-%v", rand.Intn(1000))
-		tempSSHKeyPath := createKey(testUser, tempSSHKeyName)
+		tempSSHKeyPath := createKey(testData.Username, tempSSHKeyName)
 
-		sess, err := start("deis keys:add %s.pub", tempSSHKeyPath)
-		Expect(err).To(BeNil())
+		sess, err := start("deis keys:add %s.pub", testData.Profile, tempSSHKeyPath)
+		Eventually(sess, defaultMaxTimeout).Should(Say("Uploading %s.pub to deis... done", tempSSHKeyName))
 		Eventually(sess).Should(Exit(0))
-		Eventually(sess).Should(Say("Uploading %s.pub to deis... done", tempSSHKeyName))
+		Expect(err).NotTo(HaveOccurred())
 
 		time.Sleep(5 * time.Second) // wait for ssh key to propagate
 
-		output, err := execute("deis keys:remove %s", tempSSHKeyName)
+		sess, err = start("deis keys:remove %s", testData.Profile, tempSSHKeyName)
+		Eventually(sess, defaultMaxTimeout).Should(Say("Removing %s SSH Key... done", tempSSHKeyName))
+		Eventually(sess).Should(Exit(0))
 		Expect(err).NotTo(HaveOccurred())
-		Expect(output).To(ContainSubstring("Removing %s SSH Key... done", tempSSHKeyName))
 
 		os.RemoveAll(fmt.Sprintf("~/.ssh/%s*", tempSSHKeyName))
 	})

@@ -3,33 +3,23 @@ package tests
 import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	. "github.com/onsi/gomega/gbytes"
+	. "github.com/onsi/gomega/gexec"
 )
 
 var _ = Describe("Users", func() {
-	Context("when logged in as an admin user", func() {
-		BeforeEach(func() {
-			login(url, testAdminUser, testAdminPassword)
-		})
-
-		It("can list all users", func() {
-			output, err := execute("deis users:list")
-			Expect(err).NotTo(HaveOccurred())
-			Expect(output).To(SatisfyAll(
-				HavePrefix("=== Users"),
-				ContainSubstring(testUser),
-				ContainSubstring(testAdminUser)))
-		})
-	})
-
 	Context("when logged in as a normal user", func() {
+		var testData TestData
+
 		BeforeEach(func() {
-			url, testUser, testPassword, testEmail, keyName = createRandomUser()
+			testData = initTestData()
 		})
 
 		It("can't list all users", func() {
-			output, err := execute("deis users:list")
-			Expect(err).To(HaveOccurred())
-			Expect(output).To(ContainSubstring("403 Forbidden"))
+			sess, err := start("deis users:list", testData.Profile)
+			Eventually(sess.Err, defaultMaxTimeout).Should(Say("403 Forbidden"))
+			Eventually(sess).Should(Exit(1))
+			Expect(err).NotTo(HaveOccurred())
 		})
 	})
 })

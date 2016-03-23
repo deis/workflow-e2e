@@ -1,10 +1,12 @@
 package tests
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"math/rand"
+	"net/http"
 	neturl "net/url"
 	"os"
 	"os/exec"
@@ -24,29 +26,6 @@ import (
 	"github.com/onsi/ginkgo/reporters"
 )
 
-const (
-	deisRouterServiceHost = "DEIS_ROUTER_SERVICE_HOST"
-	deisRouterServicePort = "DEIS_ROUTER_SERVICE_PORT"
-)
-
-var (
-	randSuffix                 = rand.Intn(1000)
-	testUser                   = fmt.Sprintf("test-%d", randSuffix)
-	testPassword               = "asdf1234"
-	testEmail                  = fmt.Sprintf("test-%d@deis.io", randSuffix)
-	testAdminUser              = "admin"
-	testAdminPassword          = "admin"
-	testAdminEmail             = "admin@example.com"
-	keyName                    = fmt.Sprintf("deiskey-%v", randSuffix)
-	url                        = getController()
-	debug                      = os.Getenv("DEBUG") != ""
-	homeHome                   = os.Getenv("HOME")
-	errMissingRouterHostEnvVar = fmt.Errorf("missing %s", deisRouterServiceHost)
-	defaultMaxTimeout          = 15 * time.Minute // gomega's default is 2 minutes
-)
-
-var testRoot, testHome, keyPath, gitSSH string
-
 type Cmd struct {
 	Env               []string
 	CommandLineString string
@@ -57,13 +36,53 @@ type App struct {
 	URL  string
 }
 
+type TestData struct {
+	Username      string
+	Password      string
+	Email         string
+	KeyName       string
+	KeyPath       string
+	Profile       string
+	ProfilePath   string
+	ControllerURL string
+}
+
+var adminTestData TestData
+var testRoot, testHome, keyPath, gitSSH string
+
+var (
+	debug                      = os.Getenv("DEBUG") != ""
+	homeHome                   = os.Getenv("HOME")
+	defaultMaxTimeout          = getDefaultMaxTimeout()
+	errMissingRouterHostEnvVar = fmt.Errorf("missing %s", deisRouterServiceHost)
+)
+
+const (
+	deisRouterServiceHost = "DEIS_ROUTER_SERVICE_HOST"
+	deisRouterServicePort = "DEIS_ROUTER_SERVICE_PORT"
+)
+
 func getDir() string {
-	var _, inDockerContainer = os.LookupEnv("DOCKERIMAGE")
-	if inDockerContainer {
-		return "/"
-	}
 	_, filename, _, _ := runtime.Caller(1)
 	return path.Dir(filename)
+}
+
+func getDefaultMaxTimeout() time.Duration {
+	value := os.Getenv("DEFAULT_MAX_TIMEOUT")
+	if value == "" {
+		return 600 * time.Second
+	}
+	timeout, _ := time.ParseDuration(value)
+	return timeout
+}
+
+func getDefaultEventuallyTimeout() time.Duration {
+	value := os.Getenv("DEFAULT_EVENTUALLY_TIMEOUT")
+	if value == "" {
+		return 60 * time.Second
+	}
+	timeout, _ := time.ParseDuration(value)
+	return timeout
 }
 
 func init() {
@@ -87,7 +106,7 @@ func TestTests(t *testing.T) {
 }
 
 var _ = BeforeSuite(func() {
-	SetDefaultEventuallyTimeout(15 * time.Minute)
+	SetDefaultEventuallyTimeout(getDefaultEventuallyTimeout())
 
 	// use the "deis" executable in the search $PATH
 	output, err := exec.LookPath("deis")
@@ -98,12 +117,19 @@ var _ = BeforeSuite(func() {
 	os.Setenv("HOME", testHome)
 
 	// register the test-admin user
-	registerOrLogin(url, testAdminUser, testAdminPassword, testAdminEmail)
+	registerHTTP(getController(), "admin", "admin", "admintest@deis.com")
+	profilePath := loginHTTP(getController(), "admin", "admin")
+	adminTestData.Profile = "admin"
+	adminTestData.Username = "admin"
+	adminTestData.Password = "admin"
+	adminTestData.ControllerURL = getController()
+	adminTestData.ProfilePath = profilePath
 
 	// verify this user is an admin by running a privileged command
-	sess, err := start("deis users:list")
+	sess, err := start("deis users:list", adminTestData.Profile)
 	Expect(err).To(BeNil())
 	Eventually(sess).Should(Exit(0))
+	Expect(err).NotTo(HaveOccurred())
 })
 
 var _ = BeforeEach(func() {
@@ -120,78 +146,16 @@ var _ = BeforeEach(func() {
 	Expect(err).NotTo(HaveOccurred(), output)
 })
 
-var _ = AfterEach(func() {
-	err := os.RemoveAll(testRoot)
-	Expect(err).NotTo(HaveOccurred())
-})
-
 var _ = AfterSuite(func() {
 	os.Chdir(testHome)
-	os.RemoveAll(fmt.Sprintf("~/.ssh/%s*", keyName))
-	err := os.RemoveAll(testHome)
-	Expect(err).NotTo(HaveOccurred())
 	os.Setenv("HOME", homeHome)
 })
 
-func register(url, username, password, email string) {
-	sess, err := start("deis register %s --username=%s --password=%s --email=%s", url, username, password, email)
-	Expect(err).To(BeNil())
-	Eventually(sess).Should(Say("Registered %s", username))
-	Eventually(sess).Should(Say("Logged in as %s", username))
-}
-
-func registerOrLogin(url, username, password, email string) {
-	sess, err := start("deis register %s --username=%s --password=%s --email=%s", url, username, password, email)
-
-	Expect(err).To(BeNil())
-
-	sess.Wait()
-
-	if strings.Contains(string(sess.Err.Contents()), "already exists") {
-		// Already registered
-		login(url, username, password)
-	} else {
-		Eventually(sess).Should(Exit(0))
-		Eventually(sess).Should(SatisfyAll(
-			Say("Registered %s", username),
-			Say("Logged in as %s", username)))
-	}
-}
-
-func cancel(url, username, password string) {
-	// log in to the account
-	login(url, username, password)
-
-	// remove any existing test-* apps
-	sess, err := start("deis apps")
-	Expect(err).To(BeNil())
-	Eventually(sess).Should(Exit(0))
-	re := regexp.MustCompile("test-.*")
-	for _, app := range re.FindAll(sess.Out.Contents(), -1) {
-		sess, err = start("deis destroy --app=%s --confirm=%s", app, app)
-		Expect(err).To(BeNil())
-		Eventually(sess).Should(Say("Destroying %s...", app))
-		Eventually(sess).Should(Exit(0))
-	}
-
-	// cancel the account
-	sess, err = start("deis auth:cancel --username=%s --password=%s --yes", username, password)
-	Expect(err).To(BeNil())
-	Eventually(sess).Should(Exit(0))
-	Eventually(sess).Should(Say("Account cancelled"))
-}
-
-func login(url, user, password string) {
-	sess, err := start("deis login %s --username=%s --password=%s", url, user, password)
-	Expect(err).To(BeNil())
-	Eventually(sess).Should(Exit(0))
-	Eventually(sess).Should(Say("Logged in as %s", user))
-}
-
 func logout() {
-	sess, err := start("deis auth:logout")
+	sess, err := start("deis auth:logout", "")
 	Expect(err).To(BeNil())
 	Eventually(sess).Should(Exit(0))
+	Expect(err).NotTo(HaveOccurred())
 	Eventually(sess).Should(Say("Logged out\n"))
 }
 
@@ -217,7 +181,12 @@ func execute(cmdLine string, args ...interface{}) (string, error) {
 	return output, err
 }
 
-func start(cmdLine string, args ...interface{}) (*Session, error) {
+func start(cmdLine string, profile string, args ...interface{}) (*Session, error) {
+	if profile != "" {
+		envVars := append(os.Environ(), fmt.Sprintf("DEIS_PROFILE=%s", profile))
+		ourCommand := Cmd{Env: envVars, CommandLineString: fmt.Sprintf(cmdLine, args...)}
+		return startCmd(ourCommand)
+	}
 	ourCommand := Cmd{Env: os.Environ(), CommandLineString: fmt.Sprintf(cmdLine, args...)}
 	return startCmd(ourCommand)
 }
@@ -229,13 +198,14 @@ func startCmd(command Cmd) (*Session, error) {
 	return Start(cmd, GinkgoWriter, GinkgoWriter)
 }
 
-func createKey(testUser string, name string) string {
-	keyPath := path.Join(testHome, testUser, ".ssh", name)
-	os.MkdirAll(path.Join(testHome, testUser, ".ssh"), 0777)
+func createKey(username string, name string) string {
+	keyPath := path.Join(testHome, username, ".ssh", name)
+	os.MkdirAll(path.Join(testHome, username, ".ssh"), 0777)
 	if _, err := os.Stat(keyPath); os.IsNotExist(err) {
-		sess, err := start("ssh-keygen -q -t rsa -b 4096 -C %s -f %s -N ''", name, keyPath)
+		sess, err := start("ssh-keygen -q -t rsa -b 4096 -C %s -f %s -N ''", "", name, keyPath)
 		Expect(err).To(BeNil())
 		Eventually(sess).Should(Exit(0))
+		Expect(err).NotTo(HaveOccurred())
 	}
 
 	os.Chmod(keyPath, 0600)
@@ -290,12 +260,12 @@ func getRawRouter() (*neturl.URL, error) {
 	}
 }
 
-func createApp(name string, options ...string) *Session {
+func createApp(profile string, name string, options ...string) *Session {
 	var noRemote = false
-	cmd, err := start("deis apps:create %s %s", name, strings.Join(options, " "))
+	sess, err := start("deis apps:create %s %s", profile, name, strings.Join(options, " "))
 	Expect(err).NotTo(HaveOccurred())
-	Eventually(cmd).Should(Say("created %s", name))
-	Eventually(cmd).Should(Exit(0))
+	sess.Wait(defaultMaxTimeout)
+	Eventually(sess).Should(Say("created %s", name))
 
 	for _, option := range options {
 		if option == "--no-remote" {
@@ -304,31 +274,31 @@ func createApp(name string, options ...string) *Session {
 	}
 
 	if !noRemote {
-		Eventually(cmd).Should(Say("Git remote deis added"))
+		Eventually(sess).Should(Say("Git remote deis added"))
 	}
-	Eventually(cmd).Should(Say("remote available at "))
-
-	return cmd
+	Eventually(sess).Should(Say("remote available at "))
+	Eventually(sess).Should(Exit(0))
+	return sess
 }
 
-func destroyApp(app App) *Session {
-	cmd, err := start("deis apps:destroy --app=%s --confirm=%s", app.Name, app.Name)
+func destroyApp(profile string, app App) *Session {
+	sess, err := start("deis apps:destroy --app=%s --confirm=%s", profile, app.Name, app.Name)
 	Expect(err).NotTo(HaveOccurred())
-	Eventually(cmd, defaultMaxTimeout).Should(Exit(0))
-	Eventually(cmd).Should(SatisfyAll(
-		Say("Destroying %s...", app.Name),
-		Say(`done in `)))
-
-	return cmd
+	sess.Wait(defaultMaxTimeout)
+	Eventually(sess).Should(Say("Destroying %s...", app.Name))
+	Eventually(sess).Should(Say(`done in `))
+	Eventually(sess).Should(Exit(0))
+	return sess
 }
 
-func deployApp(name string) App {
-	app := App{Name: name, URL: strings.Replace(url, "deis", name, 1)}
-	cmd, err := start("GIT_SSH=%s git push deis master", gitSSH)
+func deployApp(profile string, name string) App {
+	app := App{Name: name, URL: strings.Replace(getController(), "deis", name, 1)}
+	sess, err := start("GIT_SSH=%s git push deis master", profile, gitSSH)
 	Expect(err).NotTo(HaveOccurred())
-	Eventually(cmd.Err).Should(Say(`Done, %s:v\d deployed to Deis`, app.Name))
-	Eventually(cmd).Should(Exit(0))
-
+	sess.Wait(defaultMaxTimeout)
+	// output := string(sess.Out.Contents())
+	// Expect(output).To(MatchRegexp(`Done, %s:v\d deployed to Deis`, app.Name))
+	Eventually(sess).Should(Exit(0))
 	return app
 }
 
@@ -338,7 +308,7 @@ func deployApp(name string) App {
 // until the response code matches the expected response
 func cmdWithRetry(cmd Cmd, expectedResult string, timeout int) bool {
 	var result string
-	fmt.Printf("Waiting up to %d seconds for `%s` to return %s...\n", timeout, cmd.CommandLineString, expectedResult)
+	fmt.Fprintf(GinkgoWriter, "Waiting up to %d seconds for `%s` to return %s...\n", timeout, cmd.CommandLineString, expectedResult)
 	for i := 0; i < timeout; i++ {
 		sess, err := startCmd(cmd)
 		Expect(err).NotTo(HaveOccurred())
@@ -348,40 +318,74 @@ func cmdWithRetry(cmd Cmd, expectedResult string, timeout int) bool {
 		}
 		time.Sleep(1 * time.Second)
 	}
-	fmt.Printf("FAIL: '%s' does not match expected result of '%s'\n", result, expectedResult)
+	fmt.Fprintf(GinkgoWriter, "FAIL: '%s' does not match expected result of '%s'\n", result, expectedResult)
 	return false
 }
 
 // gitInit simply invokes 'git init' and verifies the command is successful
 func gitInit() {
-	cmd, err := start("git init")
+	cmd, err := start("git init", "")
 	Expect(err).NotTo(HaveOccurred())
 	Eventually(cmd).Should(Say("Initialized empty Git repository"))
 }
 
 // gitClean destroys the .git directory and verifies the command is successful
 func gitClean() {
-	cmd, err := start("rm -rf .git")
+	cmd, err := start("rm -rf .git", "")
 	Expect(err).NotTo(HaveOccurred())
 	Eventually(cmd).Should(Exit(0))
 }
 
-func createRandomUser() (string, string, string, string, string) {
+func makeHTTPRequest(url string, method string, jsonData []byte) string {
+	req, err := http.NewRequest(method, url, bytes.NewBuffer(jsonData))
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		panic(err)
+	}
+	defer resp.Body.Close()
+
+	respBody, _ := ioutil.ReadAll(resp.Body)
+	return string(respBody)
+}
+
+func registerHTTP(url string, username string, password string, email string) string {
+	registerURL := fmt.Sprintf("%s/v2/auth/register/", url)
+	registerJSONTemplate := "{\"username\": \"%s\",\"password\": \"%s\",\"email\": \"%s\"}"
+	var registerJSON = []byte(fmt.Sprintf(registerJSONTemplate, username, password, email))
+	return makeHTTPRequest(registerURL, "POST", registerJSON)
+}
+
+func loginHTTP(url string, username string, password string) string {
+	loginURL := fmt.Sprintf("%s/v2/auth/login/", url)
+	loginJSONTemplate := "{\"username\": \"%s\",\"password\": \"%s\"}"
+	var loginJSON = []byte(fmt.Sprintf(loginJSONTemplate, username, password))
+	loginBody := makeHTTPRequest(loginURL, "POST", loginJSON)
+
+	token := strings.TrimSuffix(strings.Split(string(loginBody), ":")[1], "}")
+	clientJSON := "{\"username\":\"%s\",\"ssl_verify\":false,\"controller\":\"%s\",\"token\":%s,\"response_limit\": 999}"
+	deisHome := path.Join(testHome, ".deis")
+	profile := path.Join(deisHome, fmt.Sprintf("%s.json", username))
+	os.MkdirAll(deisHome, 0777)
+	ioutil.WriteFile(profile, []byte(fmt.Sprintf(clientJSON, username, url, token)), 0777)
+	return profile
+}
+
+func initTestData() TestData {
 	randSuffix := rand.Intn(100000)
-	testUser := fmt.Sprintf("test-%d", randSuffix)
-	testPassword := "asdf1234"
-	testEmail := fmt.Sprintf("test-%d@deis.io", randSuffix)
+	username := fmt.Sprintf("test-%d", randSuffix)
+	password := "asdf1234"
+	email := fmt.Sprintf("test-%d@deis.io", randSuffix)
 	keyName := fmt.Sprintf("deiskey-%v", randSuffix)
 
-	sshDir := path.Join(testHome, testUser, ".ssh")
+	registerHTTP(getController(), username, password, email)
+	profilePath := loginHTTP(getController(), username, password)
 
-	// register the test user and add a key
-	registerOrLogin(url, testUser, testPassword, testEmail)
-
-	keyPath := createKey(testUser, keyName)
-
+	keyPath := createKey(username, keyName)
 	// Write out a git+ssh wrapper file to avoid known_hosts warnings
-	gitSSH = path.Join(sshDir, "git-ssh")
+	gitSSH = path.Join(testHome, username, ".ssh", "git-ssh")
 	sshFlags := "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
 	if debug {
 		sshFlags = sshFlags + " -v"
@@ -390,11 +394,20 @@ func createRandomUser() (string, string, string, string, string) {
 		"#!/bin/sh\nSSH_ORIGINAL_COMMAND=\"ssh $@\"\nexec /usr/bin/ssh %s -i %s \"$@\"\n",
 		sshFlags, keyPath)), 0777)
 
-	sess, err := start("deis keys:add %s.pub", keyPath)
-	Expect(err).To(BeNil())
+	sess, err := start("deis keys:add %s.pub", username, keyPath)
+	Eventually(sess, defaultMaxTimeout).Should(Say("Uploading %s.pub to deis... done", keyName))
 	Eventually(sess).Should(Exit(0))
-	Eventually(sess).Should(Say("Uploading %s.pub to deis... done", keyName))
+	Expect(err).NotTo(HaveOccurred())
 
-	time.Sleep(5 * time.Second) // wait for ssh key to propagate
-	return url, testUser, testPassword, testEmail, keyName
+	time.Sleep(1 * time.Second) // wait for ssh key to propagate
+	return TestData{
+		Username:      username,
+		Password:      password,
+		Email:         email,
+		KeyName:       keyName,
+		KeyPath:       keyPath,
+		ControllerURL: getController(),
+		Profile:       username,
+		ProfilePath:   profilePath,
+	}
 }

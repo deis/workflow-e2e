@@ -16,109 +16,112 @@ var _ = Describe("Config", func() {
 	Context("with a deployed app", func() {
 
 		var testApp App
+		var testData TestData
 
 		BeforeEach(func() {
-			url, testUser, testPassword, testEmail, keyName = createRandomUser()
+			testData = initTestData()
 			os.Chdir("example-go")
 			appName := getRandAppName()
-			createApp(appName)
-			testApp = deployApp(appName)
+			createApp(testData.Profile, appName)
+			testApp = deployApp(testData.Profile, appName)
 		})
 
 		It("can set and list environment variables", func() {
-			sess, err := start("deis config:set POWERED_BY=midi-chlorians")
+			sess, err := start("deis config:set POWERED_BY=midi-chlorians", testData.Profile)
 			Expect(err).NotTo(HaveOccurred())
 			Eventually(sess).Should(Say("Creating config"))
 			Eventually(sess, defaultMaxTimeout).Should(Say("=== %s Config", testApp.Name))
 			Eventually(sess).Should(Say(`POWERED_BY\s+midi-chlorians`))
 			Eventually(sess).Should(Exit(0))
-
-			sess, err = start("deis config:list -a %s", testApp.Name)
 			Expect(err).NotTo(HaveOccurred())
+
+			sess, err = start("deis config:list -a %s", testData.Profile, testApp.Name)
 			Eventually(sess).Should(Say("=== %s Config", testApp.Name))
 			Eventually(sess).Should(Say(`POWERED_BY\s+midi-chlorians`))
 			Eventually(sess).Should(Exit(0))
+			Expect(err).NotTo(HaveOccurred())
 
 			// verify "Powered by midi-chlorians" with curl
-			sess, err = start(`curl -sL "%s"; echo`, testApp.URL)
+			sess, err = start(`curl -sL "%s"; echo`, testData.Profile, testApp.URL)
 			Eventually(sess).Should(Say("Powered by midi-chlorians"))
 			Eventually(sess).Should(Exit(0))
-
-			sess, err = start("deis run env -a %s", testApp.Name)
 			Expect(err).NotTo(HaveOccurred())
+
+			sess, err = start("deis run env -a %s", testData.Profile, testApp.Name)
 			Eventually(sess, defaultMaxTimeout).Should(Say("POWERED_BY=midi-chlorians"))
 			Eventually(sess).Should(Exit(0))
+			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("can set an integer environment variable", func() {
-			sess, err := start("deis config:set FOO=1 -a %s", testApp.Name)
-			Expect(err).NotTo(HaveOccurred())
+			sess, err := start("deis config:set FOO=1 -a %s", testData.Profile, testApp.Name)
 			Eventually(sess).Should(Say("Creating config"))
 			Eventually(sess, defaultMaxTimeout).Should(Say("=== %s Config", testApp.Name))
 			Eventually(sess).Should(Say(`FOO\s+1`))
 			Eventually(sess).Should(Exit(0))
-
-			sess, err = start("deis config:list -a %s", testApp.Name)
 			Expect(err).NotTo(HaveOccurred())
-			Eventually(sess).Should(Say("=== %s Config", testApp.Name))
+
+			sess, err = start("deis config:list -a %s", testData.Profile, testApp.Name)
+			Eventually(sess, defaultMaxTimeout).Should(Say("=== %s Config", testApp.Name))
 			Eventually(sess).Should(Say(`FOO\s+1`))
 			Eventually(sess).Should(Exit(0))
-
-			sess, err = start("deis run env -a %s", testApp.Name)
 			Expect(err).NotTo(HaveOccurred())
+
+			sess, err = start("deis run env -a %s", testData.Profile, testApp.Name)
 			Eventually(sess, defaultMaxTimeout).Should(Say("FOO=1"))
 			Eventually(sess).Should(Exit(0))
+			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("can set multiple environment variables at once", func() {
-			sess, err := start("deis config:set FOO=null BAR=nil -a %s", testApp.Name)
-			Expect(err).NotTo(HaveOccurred())
+			sess, err := start("deis config:set FOO=null BAR=nil -a %s", testData.Profile, testApp.Name)
 			Eventually(sess).Should(Say("Creating config"))
 			Eventually(sess, defaultMaxTimeout).Should(Say("=== %s Config", testApp.Name))
-			Eventually(sess).Should(Exit(0))
 			output := string(sess.Out.Contents())
 			Expect(output).To(MatchRegexp(`FOO\s+null`))
 			Expect(output).To(MatchRegexp(`BAR\s+nil`))
-
-			sess, err = start("deis config:list -a %s", testApp.Name)
-			Expect(err).NotTo(HaveOccurred())
-			Eventually(sess).Should(Say("=== %s Config", testApp.Name))
 			Eventually(sess).Should(Exit(0))
+			Expect(err).NotTo(HaveOccurred())
+
+			sess, err = start("deis config:list -a %s", testData.Profile, testApp.Name)
+			Eventually(sess).Should(Say("=== %s Config", testApp.Name))
 			output = string(sess.Out.Contents())
 			Expect(output).To(MatchRegexp(`FOO\s+null`))
 			Expect(output).To(MatchRegexp(`BAR\s+nil`))
-
-			sess, err = start("deis run env -a %s", testApp.Name)
+			Eventually(sess).Should(Exit(0))
 			Expect(err).NotTo(HaveOccurred())
-			Eventually(sess, defaultMaxTimeout).Should(Exit(0))
-			output = string(sess.Out.Contents())
-			Expect(output).To(ContainSubstring("FOO=null"))
-			Expect(output).To(ContainSubstring("BAR=nil"))
+
+			sess, err = start("deis run env -a %s", testData.Profile, testApp.Name)
+			Eventually(sess, defaultMaxTimeout).Should(Say("FOO=null"))
+			Eventually(sess, defaultMaxTimeout).Should(Say("BAR=nil"))
+			Eventually(sess).Should(Exit(0))
+			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("can set an environment variable containing spaces", func() {
-			sess, err := start(`deis config:set -a %s POWERED_BY=the\ Deis\ team`, testApp.Name)
-			Expect(err).NotTo(HaveOccurred())
+			sess, err := start(`deis config:set -a %s POWERED_BY=the\ Deis\ team`, testData.Profile, testApp.Name)
 			Eventually(sess).Should(Say("Creating config"))
 			Eventually(sess, defaultMaxTimeout).Should(Say("=== %s Config", testApp.Name))
 			Eventually(sess).Should(Say(`POWERED_BY\s+the Deis team`))
 			Eventually(sess).Should(Exit(0))
-
-			sess, err = start("deis config:list -a %s", testApp.Name)
 			Expect(err).NotTo(HaveOccurred())
+
+			sess, err = start("deis config:list -a %s", testData.Profile, testApp.Name)
 			Eventually(sess).Should(Say("=== %s Config", testApp.Name))
 			Eventually(sess).Should(Say(`POWERED_BY\s+the Deis team`))
 			Eventually(sess).Should(Exit(0))
+			Expect(err).NotTo(HaveOccurred())
 
 			// verify "Powered by the Deis team" with curl
-			sess, err = start(`curl -sL "%s"; echo`, testApp.URL)
+			sess, err = start(`curl -sL "%s"; echo`, testData.Profile, testApp.URL)
 			Eventually(sess).Should(Say("Powered by the Deis team"))
 			Eventually(sess).Should(Exit(0))
-
-			sess, err = start("deis run -a %s env", testApp.Name)
 			Expect(err).NotTo(HaveOccurred())
+
+			sess, err = start("deis run -a %s env", testData.Profile, testApp.Name)
 			Eventually(sess, defaultMaxTimeout).Should(Say("POWERED_BY=the Deis team"))
 			Eventually(sess).Should(Exit(0))
+			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("can set a multi-line environment variable", func() {
@@ -126,102 +129,105 @@ var _ = Describe("Config", func() {
 a
 multiline string.`
 
-			sess, err := start(`deis config:set -a %s FOO='%s'`, testApp.Name, value)
-			Expect(err).NotTo(HaveOccurred())
+			sess, err := start(`deis config:set -a %s FOO='%s'`, testData.Profile, testApp.Name, value)
 			Eventually(sess).Should(Say("Creating config"))
 			Eventually(sess, defaultMaxTimeout).Should(Say("=== %s Config", testApp.Name))
 			Eventually(sess).Should(Say(`FOO\s+%s`, value))
 			Eventually(sess).Should(Exit(0))
-
-			sess, err = start("deis config:list -a %s", testApp.Name)
 			Expect(err).NotTo(HaveOccurred())
+
+			sess, err = start("deis config:list -a %s", testData.Profile, testApp.Name)
 			Eventually(sess).Should(Say("=== %s Config", testApp.Name))
 			Eventually(sess).Should(Say(`FOO\s+%s`, value))
 			Eventually(sess).Should(Exit(0))
-
-			sess, err = start("deis run -a %s env", testApp.Name)
 			Expect(err).NotTo(HaveOccurred())
+
+			sess, err = start("deis run -a %s env", testData.Profile, testApp.Name)
 			Eventually(sess, defaultMaxTimeout).Should(Say("FOO=%s", value))
 			Eventually(sess).Should(Exit(0))
+			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("can set an environment variable with non-ASCII and multibyte chars", func() {
-			sess, err := start("deis config:set FOO=讲台 BAR=Þorbjörnsson BAZ=ноль -a %s",
+			sess, err := start("deis config:set FOO=讲台 BAR=Þorbjörnsson BAZ=ноль -a %s", testData.Profile,
 				testApp.Name)
-			Expect(err).NotTo(HaveOccurred())
 			Eventually(sess).Should(Say("Creating config"))
 			Eventually(sess, defaultMaxTimeout).Should(Say("=== %s Config", testApp.Name))
-			Eventually(sess).Should(Exit(0))
 			output := string(sess.Out.Contents())
 			Expect(output).To(MatchRegexp(`FOO\s+讲台`))
 			Expect(output).To(MatchRegexp(`BAR\s+Þorbjörnsson`))
 			Expect(output).To(MatchRegexp(`BAZ\s+ноль`))
-
-			sess, err = start("deis config:list -a %s", testApp.Name)
-			Expect(err).NotTo(HaveOccurred())
-			Eventually(sess).Should(Say("=== %s Config", testApp.Name))
 			Eventually(sess).Should(Exit(0))
+			Expect(err).NotTo(HaveOccurred())
+
+			sess, err = start("deis config:list -a %s", testData.Profile, testApp.Name)
+			Eventually(sess).Should(Say("=== %s Config", testApp.Name))
 			output = string(sess.Out.Contents())
 			Expect(output).To(MatchRegexp(`FOO\s+讲台`))
 			Expect(output).To(MatchRegexp(`BAR\s+Þorbjörnsson`))
 			Expect(output).To(MatchRegexp(`BAZ\s+ноль`))
-
-			sess, err = start("deis run -a %s env", testApp.Name)
+			Eventually(sess).Should(Exit(0))
 			Expect(err).NotTo(HaveOccurred())
+
+			sess, err = start("deis run -a %s env", testData.Profile, testApp.Name)
 			Eventually(sess, defaultMaxTimeout).Should(Exit(0))
 			output = string(sess.Out.Contents())
 			Expect(output).To(ContainSubstring("FOO=讲台"))
 			Expect(output).To(ContainSubstring("BAR=Þorbjörnsson"))
 			Expect(output).To(ContainSubstring("BAZ=ноль"))
+			Eventually(sess).Should(Exit(0))
+			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("can unset an environment variable", func() {
-			sess, err := start("deis config:set -a %s FOO=xyzzy", testApp.Name)
-			Expect(err).NotTo(HaveOccurred())
+			sess, err := start("deis config:set -a %s FOO=xyzzy", testData.Profile, testApp.Name)
 			Eventually(sess).Should(Say("Creating config"))
 			Eventually(sess, defaultMaxTimeout).Should(Say("=== %s Config", testApp.Name))
 			Eventually(sess).Should(Say(`FOO\s+xyzzy`))
 			Eventually(sess).Should(Exit(0))
-
-			sess, err = start("deis config:list -a %s", testApp.Name)
 			Expect(err).NotTo(HaveOccurred())
+
+			sess, err = start("deis config:list -a %s", testData.Profile, testApp.Name)
 			Eventually(sess).Should(Say("=== %s Config", testApp.Name))
 			Eventually(sess).Should(Say(`FOO\s+xyzzy`))
 			Eventually(sess).Should(Exit(0))
-
-			sess, err = start("deis config:unset -a %s FOO", testApp.Name)
 			Expect(err).NotTo(HaveOccurred())
+
+			sess, err = start("deis config:unset -a %s FOO", testData.Profile, testApp.Name)
 			Eventually(sess).Should(Say("Removing config"))
 			Eventually(sess, defaultMaxTimeout).Should(Say("=== %s Config", testApp.Name))
 			Eventually(sess).Should(Exit(0))
-			Eventually(sess).ShouldNot(Say(`FOO\s+xyzzy`))
-
-			sess, err = start("deis config:list -a %s", testApp.Name)
 			Expect(err).NotTo(HaveOccurred())
-			Eventually(sess).Should(Say("=== %s Config", testApp.Name))
+			Eventually(sess).ShouldNot(Say(`FOO\s+xyzzy`))
 			Eventually(sess).Should(Exit(0))
-			Eventually(sess).ShouldNot(Say(`FOO\s+xyzzy`))
-
-			sess, err = start("deis run -a %s env", testApp.Name)
 			Expect(err).NotTo(HaveOccurred())
-			Eventually(sess, defaultMaxTimeout).Should(Exit(0))
-			Eventually(sess).ShouldNot(Say("FOO=xyzzy"))
+
+			sess, err = start("deis config:list -a %s", testData.Profile, testApp.Name)
+			Eventually(sess).Should(Say("=== %s Config", testApp.Name))
+			Eventually(sess).ShouldNot(Say(`FOO\s+xyzzy`))
+			Eventually(sess).Should(Exit(0))
+			Expect(err).NotTo(HaveOccurred())
+
+			sess, err = start("deis run -a %s env", testData.Profile, testApp.Name)
+			Eventually(sess, defaultMaxTimeout).ShouldNot(Say("FOO=xyzzy"))
+			Eventually(sess).Should(Exit(0))
+			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("can pull the configuration to an .env file", func() {
-			sess, err := start("deis config:set -a %s BAZ=Freck", testApp.Name)
-			Expect(err).NotTo(HaveOccurred())
+			sess, err := start("deis config:set -a %s BAZ=Freck", testData.Profile, testApp.Name)
 			Eventually(sess).Should(Say("Creating config"))
 			Eventually(sess, defaultMaxTimeout).Should(Say("=== %s Config", testApp.Name))
 			Eventually(sess).Should(Say(`BAZ\s+Freck`))
 			Eventually(sess).Should(Exit(0))
-
-			sess, err = start("deis config:pull -a %s", testApp.Name)
 			Expect(err).NotTo(HaveOccurred())
+
+			sess, err = start("deis config:pull -a %s", testData.Profile, testApp.Name)
 			// TODO: ginkgo seems to redirect deis' file output here, so just examine
 			// the output stream rather than reading in the .env file. Bug?
-			Eventually(sess).Should(Say("BAZ=Freck"))
+			Eventually(sess, defaultMaxTimeout).Should(Say("BAZ=Freck"))
 			Eventually(sess).Should(Exit(0))
+			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("can push the configuration from an .env file", func() {
@@ -230,24 +236,22 @@ FOO=bar`)
 			err := ioutil.WriteFile(".env", contents, 0644)
 			Expect(err).NotTo(HaveOccurred())
 
-			sess, err := start("deis config:push -a %s", testApp.Name)
-			Expect(err).NotTo(HaveOccurred())
+			sess, err := start("deis config:push -a %s", testData.Profile, testApp.Name)
 			Eventually(sess, defaultMaxTimeout).Should(Exit(0))
 
-			sess, err = start("deis config:list -a %s", testApp.Name)
-			Expect(err).NotTo(HaveOccurred())
+			sess, err = start("deis config:list -a %s", testData.Profile, testApp.Name)
 			Eventually(sess).Should(Say("=== %s Config", testApp.Name))
 			Eventually(sess).Should(Say(`BIP\s+baz`))
 			Eventually(sess).Should(Exit(0))
+			Expect(err).NotTo(HaveOccurred())
 		})
 	})
 
 	DescribeTable("can get command-line help for config", func(cmd, expected string) {
-
-		sess, err := start(cmd)
-		Expect(err).NotTo(HaveOccurred())
+		sess, err := start(cmd, "")
 		Eventually(sess).Should(Say(expected))
 		Eventually(sess).Should(Exit(0))
+		Expect(err).NotTo(HaveOccurred())
 		// TODO: test that help output was more than five lines long
 	},
 
