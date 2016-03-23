@@ -95,7 +95,7 @@ var _ = Describe("Builds", func() {
 				Eventually(cmd).Should(Say(uuidRegExp))
 			})
 
-			It("can create a build from an existing image (\"deis pull\")", func() {
+			PIt("can create a build from an existing image (\"deis pull\")", func() {
 				procsListing := listProcs(testApp).Out.Contents()
 				// scrape current processes, should be 1 (cmd)
 				Expect(len(scrapeProcs(testApp.Name, procsListing))).To(Equal(1))
