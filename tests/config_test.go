@@ -29,7 +29,7 @@ var _ = Describe("Config", func() {
 			})
 		})
 
-		It("can set and list environment variables", func() {
+		PIt("can set and list environment variables", func() {
 			sess, err := start("deis config:set POWERED_BY=midi-chlorians")
 			Expect(err).NotTo(HaveOccurred())
 			Eventually(sess).Should(Say("Creating config"))
