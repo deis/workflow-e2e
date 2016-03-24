@@ -145,9 +145,9 @@ var _ = Describe("Processes", func() {
 				}
 
 				// curl the app's root URL and print just the HTTP response code
-				sess, err = start(`curl -sL -w "%%{http_code}\\n" "%s" -o /dev/null`, testApp.URL)
-				Eventually(sess).Should(Say(strconv.Itoa(respCode)))
-				Eventually(sess).Should(Exit(0))
+				maxRetryIterations := 15
+				curlCmd := Cmd{CommandLineString: fmt.Sprintf(`curl -sL -w "%%{http_code}\\n" "%s" -o /dev/null`, testApp.URL)}
+				Eventually(cmdWithRetry(curlCmd, strconv.Itoa(respCode), maxRetryIterations)).Should(BeTrue())
 			},
 
 			Entry("restarts one of 1", "one", 1, 200),
