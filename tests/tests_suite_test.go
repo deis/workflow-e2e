@@ -291,7 +291,7 @@ $ %s=192.0.2.10 %s=31182 make test-integration`, deisRouterServiceHost, deisRout
 		panic(err)
 	}
 	if matched {
-		host = fmt.Sprintf("deis.%s.xip.io", host)
+		host = fmt.Sprintf("deis.%s.nip.io", host)
 	}
 	port := os.Getenv(deisRouterServicePort)
 	switch port {
