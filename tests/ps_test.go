@@ -61,7 +61,7 @@ var _ = Describe("Processes", func() {
 			})
 		})
 
-		PDescribeTable("can scale up and down",
+		DescribeTable("can scale up and down",
 
 			func(scaleTo, respCode int) {
 				// TODO: need some way to choose between "web" and "cmd" here!
@@ -86,10 +86,10 @@ var _ = Describe("Processes", func() {
 
 			Entry("scales to 1", 1, 200),
 			Entry("scales to 3", 3, 200),
-			Entry("scales to 0", 0, 502),
-			Entry("scales to 5", 5, 200),
-			Entry("scales to 0", 0, 502),
-			Entry("scales to 1", 1, 200),
+			PEntry("scales to 0", 0, 503),
+			PEntry("scales to 5", 5, 200),
+			PEntry("scales to 0", 0, 503),
+			PEntry("scales to 1", 1, 200),
 		)
 
 		DescribeTable("can restart processes",
@@ -158,9 +158,9 @@ var _ = Describe("Processes", func() {
 			Entry("restarts all of 6", "all", 6, 200),
 			Entry("restarts all of 6 by type", "by type", 6, 200),
 			Entry("restarts all of 6 by wrong type", "by wrong type", 6, 200),
-			PEntry("restarts all of 0", "all", 0, 502),
-			PEntry("restarts all of 0 by type", "by type", 0, 502),
-			PEntry("restarts all of 0 by wrong type", "by wrong type", 0, 502),
+			PEntry("restarts all of 0", "all", 0, 503),
+			PEntry("restarts all of 0 by type", "by type", 0, 503),
+			PEntry("restarts all of 0 by wrong type", "by wrong type", 0, 503),
 		)
 	})
 })
