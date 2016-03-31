@@ -127,7 +127,6 @@ var _ = BeforeSuite(func() {
 
 	// verify this user is an admin by running a privileged command
 	sess, err := start("deis users:list", adminTestData.Profile)
-	Expect(err).To(BeNil())
 	Eventually(sess).Should(Exit(0))
 	Expect(err).NotTo(HaveOccurred())
 })
