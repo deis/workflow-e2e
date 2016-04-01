@@ -272,6 +272,11 @@ func createApp(profile string, name string, options ...string) *Session {
 	sess.Wait(defaultMaxTimeout)
 	Eventually(sess).Should(Say("created %s", name))
 
+	existed := appNameSet.Add(apps.NameFromString(name))
+	if existed {
+		fmt.Printf("Recoverable error: app %s was already created\n", name)
+	}
+
 	for _, option := range options {
 		if option == "--no-remote" {
 			noRemote = true

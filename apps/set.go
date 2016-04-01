@@ -7,6 +7,11 @@ import (
 // Name is the name of an app that was created by a test in the suite. It is a fmt.Stringer
 type Name string
 
+// NameFromString creates a new Name from a string representation of an app name
+func NameFromString(str string) Name {
+	return Name(str)
+}
+
 // String is the fmt.Stringer interface implementation
 func (a Name) String() string {
 	return string(a)
