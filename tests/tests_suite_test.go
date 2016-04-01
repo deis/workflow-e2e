@@ -151,7 +151,21 @@ var _ = BeforeEach(func() {
 var _ = AfterSuite(func() {
 	os.Chdir(testHome)
 	os.Setenv("HOME", homeHome)
-	// Still TODO: remove all namespaces according to the return values of appNameSet.GetAll()
+	deleteSuccCh := make(chan apps.Name)
+	deleteErrCh := make(chan error)
+	deleteDoneCh := make(chan struct{})
+	go apps.DeleteAll(appNameSet.GetAll(), deleteSuccCh, deleteErrCh, deleteDoneCh)
+	for {
+		select {
+		case appName := <-deleteSuccCh:
+			log.Printf("successfully deleted app namespace %s", appName)
+		case err := <-deleteErrCh:
+			log.Printf("error deleting app namespace (%s)", err)
+		case <-deleteDoneCh:
+			break
+		}
+	}
+
 })
 
 func logout() {
