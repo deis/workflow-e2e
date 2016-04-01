@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"math/rand"
 	"net/http"
 	neturl "net/url"
@@ -216,16 +217,18 @@ func createKey(username string, name string) string {
 func getController() string {
 	host := os.Getenv(deisRouterServiceHost)
 	if host == "" {
-		panicStr := fmt.Sprintf(`Set the router host and port for tests, such as:
+		errStr := fmt.Sprintf(`Set the router host and port for tests, such as:
 
 $ %s=192.0.2.10 %s=31182 make test-integration`, deisRouterServiceHost, deisRouterServicePort)
-		panic(panicStr)
+		log.Println(errStr)
+		os.Exit(1)
 	}
 	// Make a xip.io URL if DEIS_ROUTER_SERVICE_HOST is an IP V4 address
 	ipv4Regex := `^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$`
 	matched, err := regexp.MatchString(ipv4Regex, host)
 	if err != nil {
-		panic(err)
+		log.Printf("Error: Invalid router service host %s (%s)", host, err)
+		os.Exit(1)
 	}
 	if matched {
 		host = fmt.Sprintf("deis.%s.nip.io", host)
@@ -343,7 +346,8 @@ func makeHTTPRequest(url string, method string, jsonData []byte) string {
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		panic(err)
+		log.Printf("Error making %s request to %s (%s)", method, url, err)
+		os.Exit(1)
 	}
 	defer resp.Body.Close()
 
