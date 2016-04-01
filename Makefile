@@ -25,11 +25,11 @@ bootstrap:
 
 .PHONY: test-integration
 test-integration:
-	DEFAULT_EVENTUALLY_TIMEOUT="30s" ginkgo $TEST_OPTS tests/
+	DEFAULT_EVENTUALLY_TIMEOUT="30s" ginkgo ${TEST_OPTS} tests/
 
 .PHONY: test-integration
 test-integration-parallel:
-	ginkgo $PARALLEL_TEST_OPTS tests/
+	ginkgo ${PARALLEL_TEST_OPTS} tests/
 
 .PHONY: docker-build
 docker-build:
