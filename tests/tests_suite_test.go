@@ -24,6 +24,7 @@ import (
 	. "github.com/onsi/gomega/gbytes"
 	. "github.com/onsi/gomega/gexec"
 
+	"github.com/deis/workflow-e2e/apps"
 	"github.com/onsi/ginkgo/reporters"
 )
 
@@ -48,14 +49,14 @@ type TestData struct {
 	ControllerURL string
 }
 
-var adminTestData TestData
-var testRoot, testHome, keyPath, gitSSH string
-
 var (
-	debug                      = os.Getenv("DEBUG") != ""
-	homeHome                   = os.Getenv("HOME")
-	defaultMaxTimeout          = getDefaultMaxTimeout()
-	errMissingRouterHostEnvVar = fmt.Errorf("missing %s", deisRouterServiceHost)
+	adminTestData                       TestData
+	testRoot, testHome, keyPath, gitSSH string
+	appNameSet                          = apps.NewSet()
+	debug                               = os.Getenv("DEBUG") != ""
+	homeHome                            = os.Getenv("HOME")
+	defaultMaxTimeout                   = getDefaultMaxTimeout()
+	errMissingRouterHostEnvVar          = fmt.Errorf("missing %s", deisRouterServiceHost)
 )
 
 const (
@@ -150,6 +151,7 @@ var _ = BeforeEach(func() {
 var _ = AfterSuite(func() {
 	os.Chdir(testHome)
 	os.Setenv("HOME", homeHome)
+	// Still TODO: remove all namespaces according to the return values of appNameSet.GetAll()
 })
 
 func logout() {
