@@ -14,55 +14,43 @@ var _ = Describe("Auth", func() {
 		})
 
 		It("won't print the current user", func() {
-			sess, err := start("deis auth:whoami")
-			Expect(err).To(BeNil())
-			Eventually(sess).Should(Exit(1))
+			sess, err := start("deis auth:whoami", "")
 			Eventually(sess.Err).Should(Say("Not logged in"))
+			Eventually(sess).Should(Exit(1))
+			Expect(err).NotTo(HaveOccurred())
 		})
 	})
 
 	Context("when logged in", func() {
+		var testData TestData
+		BeforeEach(func() {
+			testData = initTestData()
+		})
+
 		It("can log out", func() {
 			logout()
 		})
 
 		It("won't register twice", func() {
 			cmd := "deis register %s --username=%s --password=%s --email=%s"
-			out, err := execute(cmd, url, testUser, testPassword, testEmail)
-			Expect(err).To(HaveOccurred())
-			Expect(out).To(ContainSubstring("Registration failed"))
+			sess, err := start(cmd, testData.Profile, testData.ControllerURL, testData.Username, testData.Password, testData.Email)
+			Eventually(sess.Err).Should(Say("Registration failed"))
+			Eventually(sess).Should(Exit(1))
+			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("prints the current user", func() {
-			sess, err := start("deis auth:whoami")
-			Expect(err).To(BeNil())
+			sess, err := start("deis auth:whoami", testData.Profile)
+			Eventually(sess).Should(Say("You are %s", testData.Username))
 			Eventually(sess).Should(Exit(0))
-			Eventually(sess).Should(Say("You are %s", testUser))
+			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("regenerates the token for the current user", func() {
-			sess, err := start("deis auth:regenerate")
-			Expect(err).To(BeNil())
-			Eventually(sess).Should(Exit(0))
+			sess, err := start("deis auth:regenerate", testData.Profile)
 			Eventually(sess).Should(Say("Token Regenerated"))
-		})
-	})
-
-	Context("when logged in as an admin", func() {
-		BeforeEach(func() {
-			login(url, testAdminUser, testAdminPassword)
-		})
-
-		It("regenerates the token for a specified user", func() {
-			output, err := execute("deis auth:regenerate -u %s", testUser)
+			Eventually(sess).Should(Exit(0))
 			Expect(err).NotTo(HaveOccurred())
-			Expect(output).To(ContainSubstring("Token Regenerated"))
-		})
-
-		It("regenerates the token for all users", func() {
-			output, err := execute("deis auth:regenerate --all")
-			Expect(err).NotTo(HaveOccurred())
-			Expect(output).To(ContainSubstring("Token Regenerated"))
 		})
 	})
 })

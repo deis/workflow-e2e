@@ -5,7 +5,6 @@ import (
 	"os/exec"
 	"regexp"
 	"strings"
-	"sync"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo/extensions/table"
@@ -18,51 +17,47 @@ var _ = Describe("Tags", func() {
 
 	Context("with a deployed app", func() {
 		var testApp App
-		once := &sync.Once{}
+		var testData TestData
 
 		BeforeEach(func() {
 			// use the "kubectl" executable in the search $PATH
 			if _, err := exec.LookPath("kubectl"); err != nil {
 				Skip("kubectl not found in search $PATH")
 			}
-
-			// Set up the Tags test app only once and assume the suite will clean up.
-			once.Do(func() {
-				os.Chdir("example-go")
-				appName := getRandAppName()
-				createApp(appName)
-				testApp = deployApp(appName)
-			})
+			testData = initTestData()
+			os.Chdir("example-go")
+			appName := getRandAppName()
+			createApp(testData.Profile, appName)
+			testApp = deployApp(testData.Profile, appName)
 		})
 
 		It("can set and unset tags", func() {
 			// can list tags
-			sess, err := start("deis tags:list")
-			Expect(err).NotTo(HaveOccurred())
+			sess, err := start("deis tags:list", testData.Profile)
 			Eventually(sess).Should(Say("=== %s Tags", testApp.Name))
 			Eventually(sess).Should(Exit(0))
+			Expect(err).NotTo(HaveOccurred())
 
 			// set an invalid tag
-			sess, err = start("deis tags:set munkafolyamat=yeah")
-			Expect(err).NotTo(HaveOccurred())
-			Eventually(sess).ShouldNot(Say("=== %s Tags", testApp.Name))
+			sess, err = start("deis tags:set munkafolyamat=yeah", testData.Profile)
+			Eventually(sess, defaultMaxTimeout).ShouldNot(Say("=== %s Tags", testApp.Name))
 			Eventually(sess).ShouldNot(Say(`munkafolyamat\s+yeah`, testApp.Name))
 			Eventually(sess.Err).Should(Say("400 Bad Request"))
 			Eventually(sess).Should(Exit(1))
 
 			// list tags
-			sess, err = start("deis tags:list")
-			Expect(err).NotTo(HaveOccurred())
+			sess, err = start("deis tags:list", testData.Profile)
 			Eventually(sess).Should(Say("=== %s Tags", testApp.Name))
 			Eventually(sess).ShouldNot(Say(`munkafolyamat\s+yeah`, testApp.Name))
 			Eventually(sess).Should(Exit(0))
+			Expect(err).NotTo(HaveOccurred())
 
 			// find a valid tag to set
 			cmd := "kubectl get nodes -o jsonpath={.items[*].metadata..labels}"
 			// use original $HOME dir or kubectl can't find its config
-			sess, err = start("HOME=%s %s", homeHome, cmd)
-			Expect(err).NotTo(HaveOccurred())
+			sess, err = start("HOME=%s %s", "", homeHome, cmd)
 			Eventually(sess).Should(Exit(0))
+			Expect(err).NotTo(HaveOccurred())
 			// grep output like "map[kubernetes.io/hostname:192.168.64.2 node:worker1]"
 			re := regexp.MustCompile(`([\w\.]{0,253}/?[-_\.\w]{1,63}:[-_\.\w]{1,63})`)
 			pairs := re.FindAllString(string(sess.Out.Contents()), -1)
@@ -70,50 +65,50 @@ var _ = Describe("Tags", func() {
 			label := strings.Split(pairs[0], ":")
 
 			// set a valid tag
-			sess, err = start("deis tags:set %s=%s", label[0], label[1])
-			Expect(err).NotTo(HaveOccurred())
-			Eventually(sess, "5m").Should(Say("=== %s Tags", testApp.Name))
+			sess, err = start("deis tags:set %s=%s", testData.Profile, label[0], label[1])
+			Eventually(sess, defaultMaxTimeout).Should(Say("=== %s Tags", testApp.Name))
 			Eventually(sess).Should(Say(`%s\s+%s`, label[0], label[1]))
 			Eventually(sess).Should(Exit(0))
+			Expect(err).NotTo(HaveOccurred())
 
 			// list tags
-			sess, err = start("deis tags:list")
-			Expect(err).NotTo(HaveOccurred())
+			sess, err = start("deis tags:list", testData.Profile)
 			Eventually(sess).Should(Say("=== %s Tags", testApp.Name))
 			Eventually(sess).Should(Say(`%s\s+%s`, label[0], label[1]))
 			Eventually(sess).Should(Exit(0))
+			Expect(err).NotTo(HaveOccurred())
 
 			// unset an invalid tag
-			sess, err = start("deis tags:unset munkafolyamat")
-			Expect(err).NotTo(HaveOccurred())
+			sess, err = start("deis tags:unset munkafolyamat", testData.Profile)
 			// TODO: should unsetting a bogus tag return 0 (success?)
-			Eventually(sess, "5m").Should(Exit(0))
-			Eventually(sess).Should(Say("=== %s Tags", testApp.Name))
+			Eventually(sess, defaultMaxTimeout).Should(Say("=== %s Tags", testApp.Name))
 			Eventually(sess).ShouldNot(Say(`munkafolyamat\s+yeah`, testApp.Name))
+			Eventually(sess).Should(Exit(0))
+			Expect(err).NotTo(HaveOccurred())
 
 			// unset a valid tag
-			sess, err = start("deis tags:unset %s", label[0])
-			Expect(err).NotTo(HaveOccurred())
-			Eventually(sess, "5m").Should(Say("=== %s Tags", testApp.Name))
-			Eventually(sess).Should(Exit(0))
+			sess, err = start("deis tags:unset %s", testData.Profile, label[0])
+			Eventually(sess, defaultMaxTimeout).Should(Say("=== %s Tags", testApp.Name))
 			Eventually(sess).ShouldNot(Say(`%s\s+%s`, label[0], label[1]))
+			Eventually(sess).Should(Exit(0))
+			Expect(err).NotTo(HaveOccurred())
 
 			// list tags
-			sess, err = start("deis tags:list")
-			Expect(err).NotTo(HaveOccurred())
+			sess, err = start("deis tags:list", testData.Profile)
 			Eventually(sess).Should(Say("=== %s Tags", testApp.Name))
-			Eventually(sess).Should(Exit(0))
 			Eventually(sess).ShouldNot(Say(`%s\s+%s`, label[0], label[1]))
 			Eventually(sess).ShouldNot(Say(`munkafolyamat\s+yeah`, testApp.Name))
+			Eventually(sess).Should(Exit(0))
+			Expect(err).NotTo(HaveOccurred())
 		})
 	})
 
 	DescribeTable("can get command-line help for tags", func(cmd, expected string) {
 
-		sess, err := start(cmd)
-		Expect(err).NotTo(HaveOccurred())
+		sess, err := start(cmd, "")
 		Eventually(sess).Should(Say(expected))
 		Eventually(sess).Should(Exit(0))
+		Expect(err).NotTo(HaveOccurred())
 		// TODO: test that help output was more than five lines long
 	},
 

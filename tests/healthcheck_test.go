@@ -11,29 +11,21 @@ import (
 )
 
 var _ = Describe("Healthcheck", func() {
+	var testData TestData
 	appName := getRandAppName()
+
 	Context("with a deployed app", func() {
 		// create and deploy an app
 		BeforeEach(func() {
-			login(url, testUser, testPassword)
-			sess, err := start("deis apps:create %s", appName)
-			Expect(err).To(BeNil())
-			Eventually(sess).Should(Exit(0))
+			testData = initTestData()
+			sess, err := start("deis apps:create %s", testData.Profile, appName)
 			Eventually(sess).Should(Say("Creating Application... done, created %s", appName))
-			sess, err = start("deis pull deis/example-go -a %s", appName)
-			Expect(err).To(BeNil())
 			Eventually(sess).Should(Exit(0))
+			Expect(err).NotTo(HaveOccurred())
+			sess, err = start("deis pull deis/example-go -a %s", testData.Profile, appName)
 			Eventually(sess).Should(Say("Creating build... done"))
-		})
-
-		// destroy the app
-		AfterEach(func() {
-			sess, err := start("deis apps:destroy --confirm=%s", appName)
-			Expect(err).To(BeNil())
 			Eventually(sess).Should(Exit(0))
-			Eventually(sess).Should(Say("Destroying %s...", appName))
-			Eventually(sess).Should(Say("done in "))
-			Eventually(sess).Should(Say("Git remote deis removed"))
+			Expect(err).NotTo(HaveOccurred())
 		})
 
 		// TODO: test is broken
@@ -47,9 +39,9 @@ var _ = Describe("Healthcheck", func() {
 			// start scaling the app
 			go func() {
 				for range stopCh {
-					sess, err := start("deis ps:scale web=4 -a %s", appName)
-					Expect(err).To(BeNil())
+					sess, err := start("deis ps:scale web=4 -a %s", testData.Profile, appName)
 					Eventually(sess).Should(Exit(0))
+					Expect(err).NotTo(HaveOccurred())
 				}
 				close(doneCh)
 			}()
