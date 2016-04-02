@@ -1,97 +1,27 @@
 package tests
 
 import (
-	"bytes"
 	"fmt"
-	"io"
 	"io/ioutil"
-	"log"
 	"math/rand"
-	"net/http"
-	neturl "net/url"
 	"os"
 	"os/exec"
 	"path"
 	"path/filepath"
-	"regexp"
-	"runtime"
-	"strings"
 	"testing"
 	"time"
 
+	"github.com/deis/workflow-e2e/tests/cmd/auth"
+	"github.com/deis/workflow-e2e/tests/settings"
+
 	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
-	. "github.com/onsi/gomega/gbytes"
-	. "github.com/onsi/gomega/gexec"
-
+	. "github.com/onsi/ginkgo/config"
 	"github.com/onsi/ginkgo/reporters"
+	. "github.com/onsi/gomega"
 )
-
-type Cmd struct {
-	Env               []string
-	CommandLineString string
-}
-
-type App struct {
-	Name string
-	URL  string
-}
-
-type TestData struct {
-	Username      string
-	Password      string
-	Email         string
-	KeyName       string
-	KeyPath       string
-	Profile       string
-	ProfilePath   string
-	ControllerURL string
-}
-
-var adminTestData TestData
-var testRoot, testHome, keyPath, gitSSH string
-
-var (
-	debug                      = os.Getenv("DEBUG") != ""
-	homeHome                   = os.Getenv("HOME")
-	defaultMaxTimeout          = getDefaultMaxTimeout()
-	errMissingRouterHostEnvVar = fmt.Errorf("missing %s", deisRouterServiceHost)
-)
-
-const (
-	deisRouterServiceHost = "DEIS_ROUTER_SERVICE_HOST"
-	deisRouterServicePort = "DEIS_ROUTER_SERVICE_PORT"
-)
-
-func getDir() string {
-	_, filename, _, _ := runtime.Caller(1)
-	return path.Dir(filename)
-}
-
-func getDefaultMaxTimeout() time.Duration {
-	value := os.Getenv("DEFAULT_MAX_TIMEOUT")
-	if value == "" {
-		return 600 * time.Second
-	}
-	timeout, _ := time.ParseDuration(value)
-	return timeout
-}
-
-func getDefaultEventuallyTimeout() time.Duration {
-	value := os.Getenv("DEFAULT_EVENTUALLY_TIMEOUT")
-	if value == "" {
-		return 60 * time.Second
-	}
-	timeout, _ := time.ParseDuration(value)
-	return timeout
-}
 
 func init() {
 	rand.Seed(time.Now().UnixNano())
-}
-
-func getRandAppName() string {
-	return fmt.Sprintf("test-%d", rand.Intn(999999999))
 }
 
 func TestTests(t *testing.T) {
@@ -99,318 +29,84 @@ func TestTests(t *testing.T) {
 
 	enableJunit := os.Getenv("JUNIT")
 	if enableJunit == "true" {
-		junitFileName := fmt.Sprintf("junit-%d.xml", rand.Intn(999))
-		junitReporter := reporters.NewJUnitReporter(filepath.Join(homeHome, junitFileName))
-		RunSpecsWithDefaultAndCustomReporters(t, "Deis Workflow with junit reporter", []Reporter{junitReporter})
+		junitReporter := reporters.NewJUnitReporter(filepath.Join(settings.ActualHome, fmt.Sprintf("junit-%d.xml", GinkgoConfig.ParallelNode)))
+		RunSpecsWithDefaultAndCustomReporters(t, "Deis Workflow", []Reporter{junitReporter})
 	} else {
 		RunSpecs(t, "Deis Workflow")
 	}
 }
 
-var _ = BeforeSuite(func() {
-	SetDefaultEventuallyTimeout(getDefaultEventuallyTimeout())
-
-	// use the "deis" executable in the search $PATH
+// SynchronizedBeforeSuite will run once and only once, even when tests are parallelized. It
+// performs all the one-time setup required by the test suite.
+var _ = SynchronizedBeforeSuite(func() []byte {
+	// Verify the "deis" executable is on the $PATH
 	output, err := exec.LookPath("deis")
 	Expect(err).NotTo(HaveOccurred(), output)
 
-	testHome, err = ioutil.TempDir("", "deis-workflow-home")
+	// Create temporary home directory for use by this test run.
+	testHome, err := ioutil.TempDir("", "deis-workflow-home")
 	Expect(err).NotTo(HaveOccurred())
+
+	// When running parallel tests, Ginkgo seems to fork processes instead of using goroutines.
+	// We set $HOME to our temporary home directory so it can be discovered and used by other
+	// Ginkgo processes.
+	os.Setenv("HOME", settings.TestHome)
+
+	// Create and install a git wrapper script. This will allow us to always specify the private
+	// key to use by means of an environment variable. This is a convenience that helps us run
+	// tests in parallel, where each test user might have its own keys.
+	sshHome := path.Join(testHome, ".ssh")
+	os.MkdirAll(sshHome, 0777)
+	settings.GitSSH = path.Join(sshHome, "git-ssh")
+	sshFlags := "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+	if settings.Debug {
+		sshFlags = sshFlags + " -v"
+	}
+	ioutil.WriteFile(settings.GitSSH, []byte(fmt.Sprintf("#!/bin/sh\nSSH_ORIGINAL_COMMAND=\"ssh $@\"\nexec /usr/bin/ssh %s -i \"$GIT_KEY\" \"$@\"\n", sshFlags)), 0777)
+
+	// Set $HOME before we go any further. The user registration step below will need this to be
+	// set correctly in order for the profile containing the user's auth token to be written to
+	// the correct directory.
 	os.Setenv("HOME", testHome)
 
-	// register the test-admin user
-	registerHTTP(getController(), "admin", "admin", "admintest@deis.com")
-	profilePath := loginHTTP(getController(), "admin", "admin")
-	adminTestData.Profile = "admin"
-	adminTestData.Username = "admin"
-	adminTestData.Password = "admin"
-	adminTestData.ControllerURL = getController()
-	adminTestData.ProfilePath = profilePath
+	// Set the defaultEventuallyTimeout before we go any further. The next step carries out a user
+	// registration and we'll want this timeout set before then.
+	SetDefaultEventuallyTimeout(settings.DefaultEventuallyTimeout)
 
-	// verify this user is an admin by running a privileged command
-	sess, err := start("deis users:list", adminTestData.Profile)
-	Eventually(sess).Should(Exit(0))
-	Expect(err).NotTo(HaveOccurred())
+	// ATTEMPT to register the admin user. Since the FIRST user to regiser in a new cluster is
+	// automatically the admin, it's vitally important that this happen now. If the admin user
+	// already exists, this step will attempt to login as that user.
+	auth.RegisterAdmin()
+
+	// Return the value of testHome as bytes. Ginkgo will pass these to the function below, which
+	// will be executed on every node (like BeforeSuite would if we were using it.)
+	return []byte(testHome)
+}, func(data []byte) {
+	settings.TestHome = string(data)
+
+	// Set $HOME for the benefit of all commands we will fork to execute.
+	os.Setenv("HOME", settings.TestHome)
+
+	// Derive settings.GitSSH from settings.TestHome.
+	sshHome := path.Join(settings.TestHome, ".ssh")
+	settings.GitSSH = path.Join(sshHome, "git-ssh")
+
+	// Set the defaultEventuallyTimeout for ALL Ginko nodes.
+	SetDefaultEventuallyTimeout(settings.DefaultEventuallyTimeout)
 })
 
 var _ = BeforeEach(func() {
+	// Make a directory within the home directory for each test. This is to avoid collisions when
+	// tests do things like clone git repos.
 	var err error
-	var output string
-
-	testRoot, err = ioutil.TempDir("", "deis-workflow-test")
+	settings.TestRoot, err = ioutil.TempDir("", "deis-workflow-test")
 	Expect(err).NotTo(HaveOccurred())
-
-	os.Chdir(testRoot)
-	output, err = execute(`git clone https://github.com/deis/example-go.git`)
-	Expect(err).NotTo(HaveOccurred(), output)
-	output, err = execute(`git clone https://github.com/deis/example-perl.git`)
-	Expect(err).NotTo(HaveOccurred(), output)
+	// Everything we do, we do from within that directory...
+	os.Chdir(settings.TestRoot)
+	// But note that all test users and tests still share a common $HOME!
 })
 
-var _ = AfterSuite(func() {
-	os.Chdir(testHome)
-	os.Setenv("HOME", homeHome)
+var _ = SynchronizedAfterSuite(func() {}, func() {
+	auth.CancelAdmin()
+	os.RemoveAll(settings.TestHome)
 })
-
-func logout() {
-	sess, err := start("deis auth:logout", "")
-	Expect(err).To(BeNil())
-	Eventually(sess).Should(Exit(0))
-	Expect(err).NotTo(HaveOccurred())
-	Eventually(sess).Should(Say("Logged out\n"))
-}
-
-// execute executes the command generated by fmt.Sprintf(cmdLine, args...) and returns its output as a cmdOut structure.
-// this structure can then be matched upon using the SucceedWithOutput matcher below
-func execute(cmdLine string, args ...interface{}) (string, error) {
-	var cmd *exec.Cmd
-	shCommand := fmt.Sprintf(cmdLine, args...)
-
-	if debug {
-		fmt.Println(shCommand)
-	}
-
-	cmd = exec.Command("/bin/sh", "-c", shCommand)
-	outputBytes, err := cmd.CombinedOutput()
-
-	output := string(outputBytes)
-
-	if debug {
-		fmt.Println(output)
-	}
-
-	return output, err
-}
-
-func start(cmdLine string, profile string, args ...interface{}) (*Session, error) {
-	if profile != "" {
-		envVars := append(os.Environ(), fmt.Sprintf("DEIS_PROFILE=%s", profile))
-		ourCommand := Cmd{Env: envVars, CommandLineString: fmt.Sprintf(cmdLine, args...)}
-		return startCmd(ourCommand)
-	}
-	ourCommand := Cmd{Env: os.Environ(), CommandLineString: fmt.Sprintf(cmdLine, args...)}
-	return startCmd(ourCommand)
-}
-
-func startCmd(command Cmd) (*Session, error) {
-	cmd := exec.Command("/bin/sh", "-c", command.CommandLineString)
-	cmd.Env = command.Env
-	io.WriteString(GinkgoWriter, fmt.Sprintf("$ %s\n", command.CommandLineString))
-	return Start(cmd, GinkgoWriter, GinkgoWriter)
-}
-
-func createKey(username string, name string) string {
-	keyPath := path.Join(testHome, username, ".ssh", name)
-	os.MkdirAll(path.Join(testHome, username, ".ssh"), 0777)
-	if _, err := os.Stat(keyPath); os.IsNotExist(err) {
-		sess, err := start("ssh-keygen -q -t rsa -b 4096 -C %s -f %s -N ''", "", name, keyPath)
-		Expect(err).To(BeNil())
-		Eventually(sess).Should(Exit(0))
-		Expect(err).NotTo(HaveOccurred())
-	}
-
-	os.Chmod(keyPath, 0600)
-
-	return keyPath
-}
-
-func getController() string {
-	host := os.Getenv(deisRouterServiceHost)
-	if host == "" {
-		errStr := fmt.Sprintf(`Set the router host and port for tests, such as:
-
-$ %s=192.0.2.10 %s=31182 make test-integration`, deisRouterServiceHost, deisRouterServicePort)
-		log.Println(errStr)
-		os.Exit(1)
-	}
-	// Make a xip.io URL if DEIS_ROUTER_SERVICE_HOST is an IP V4 address
-	ipv4Regex := `^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$`
-	matched, err := regexp.MatchString(ipv4Regex, host)
-	if err != nil {
-		log.Printf("Error: Invalid router service host %s (%s)", host, err)
-		os.Exit(1)
-	}
-	if matched {
-		host = fmt.Sprintf("deis.%s.nip.io", host)
-	}
-	port := os.Getenv(deisRouterServicePort)
-	switch port {
-	case "443":
-		return "https://" + host
-	case "80", "":
-		return "http://" + host
-	default:
-		return fmt.Sprintf("http://%s:%s", host, port)
-	}
-}
-
-// getRawRouter returns the URL to the deis router according to env vars.
-//
-// Returns an error if the minimal env vars are missing, or there was an error creating a URL from them.
-func getRawRouter() (*neturl.URL, error) {
-	host := os.Getenv(deisRouterServiceHost)
-	if host == "" {
-		return nil, errMissingRouterHostEnvVar
-	}
-	portStr := os.Getenv(deisRouterServicePort)
-	switch portStr {
-	case "443":
-		return neturl.Parse(fmt.Sprintf("https://%s", host))
-	case "80", "":
-		return neturl.Parse(fmt.Sprintf("http://%s", host))
-	default:
-		return neturl.Parse(fmt.Sprintf("http://%s:%s", host, portStr))
-	}
-}
-
-func createApp(profile string, name string, options ...string) *Session {
-	var noRemote = false
-	sess, err := start("deis apps:create %s %s", profile, name, strings.Join(options, " "))
-	Expect(err).NotTo(HaveOccurred())
-	sess.Wait(defaultMaxTimeout)
-	Eventually(sess).Should(Say("created %s", name))
-
-	for _, option := range options {
-		if option == "--no-remote" {
-			noRemote = true
-		}
-	}
-
-	if !noRemote {
-		Eventually(sess).Should(Say("Git remote deis added"))
-	}
-	Eventually(sess).Should(Say("remote available at "))
-	Eventually(sess).Should(Exit(0))
-	return sess
-}
-
-func destroyApp(profile string, app App) *Session {
-	sess, err := start("deis apps:destroy --app=%s --confirm=%s", profile, app.Name, app.Name)
-	Expect(err).NotTo(HaveOccurred())
-	sess.Wait(defaultMaxTimeout)
-	Eventually(sess).Should(Say("Destroying %s...", app.Name))
-	Eventually(sess).Should(Say(`done in `))
-	Eventually(sess).Should(Exit(0))
-	return sess
-}
-
-func deployApp(profile string, name string) App {
-	app := App{Name: name, URL: strings.Replace(getController(), "deis", name, 1)}
-	sess, err := start("GIT_SSH=%s git push deis master", profile, gitSSH)
-	Expect(err).NotTo(HaveOccurred())
-	sess.Wait(defaultMaxTimeout)
-	// output := string(sess.Out.Contents())
-	// Expect(output).To(MatchRegexp(`Done, %s:v\d deployed to Deis`, app.Name))
-	Eventually(sess).Should(Exit(0))
-	return app
-}
-
-// cmdWithRetry runs the provided <cmd> repeatedly, once a second up to the
-// supplied <timeout> until the <cmd> result contains the <expectedResult>
-// An example use of this utility would be curl-ing a url and waiting
-// until the response code matches the expected response
-func cmdWithRetry(cmd Cmd, expectedResult string, timeout int) bool {
-	var result string
-	fmt.Fprintf(GinkgoWriter, "Waiting up to %d seconds for `%s` to return %s...\n", timeout, cmd.CommandLineString, expectedResult)
-	for i := 0; i < timeout; i++ {
-		sess, err := startCmd(cmd)
-		Expect(err).NotTo(HaveOccurred())
-		result = string(sess.Wait().Out.Contents())
-		if strings.Contains(result, expectedResult) {
-			return true
-		}
-		time.Sleep(1 * time.Second)
-	}
-	fmt.Fprintf(GinkgoWriter, "FAIL: '%s' does not match expected result of '%s'\n", result, expectedResult)
-	return false
-}
-
-// gitInit simply invokes 'git init' and verifies the command is successful
-func gitInit() {
-	cmd, err := start("git init", "")
-	Expect(err).NotTo(HaveOccurred())
-	Eventually(cmd).Should(Say("Initialized empty Git repository"))
-}
-
-// gitClean destroys the .git directory and verifies the command is successful
-func gitClean() {
-	cmd, err := start("rm -rf .git", "")
-	Expect(err).NotTo(HaveOccurred())
-	Eventually(cmd).Should(Exit(0))
-}
-
-func makeHTTPRequest(url string, method string, jsonData []byte) string {
-	req, err := http.NewRequest(method, url, bytes.NewBuffer(jsonData))
-	req.Header.Set("Content-Type", "application/json")
-
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		log.Printf("Error making %s request to %s (%s)", method, url, err)
-		os.Exit(1)
-	}
-	defer resp.Body.Close()
-
-	respBody, _ := ioutil.ReadAll(resp.Body)
-	return string(respBody)
-}
-
-func registerHTTP(url string, username string, password string, email string) string {
-	registerURL := fmt.Sprintf("%s/v2/auth/register/", url)
-	registerJSONTemplate := "{\"username\": \"%s\",\"password\": \"%s\",\"email\": \"%s\"}"
-	var registerJSON = []byte(fmt.Sprintf(registerJSONTemplate, username, password, email))
-	return makeHTTPRequest(registerURL, "POST", registerJSON)
-}
-
-func loginHTTP(url string, username string, password string) string {
-	loginURL := fmt.Sprintf("%s/v2/auth/login/", url)
-	loginJSONTemplate := "{\"username\": \"%s\",\"password\": \"%s\"}"
-	var loginJSON = []byte(fmt.Sprintf(loginJSONTemplate, username, password))
-	loginBody := makeHTTPRequest(loginURL, "POST", loginJSON)
-
-	token := strings.TrimSuffix(strings.Split(string(loginBody), ":")[1], "}")
-	clientJSON := "{\"username\":\"%s\",\"ssl_verify\":false,\"controller\":\"%s\",\"token\":%s,\"response_limit\": 999}"
-	deisHome := path.Join(testHome, ".deis")
-	profile := path.Join(deisHome, fmt.Sprintf("%s.json", username))
-	os.MkdirAll(deisHome, 0777)
-	ioutil.WriteFile(profile, []byte(fmt.Sprintf(clientJSON, username, url, token)), 0777)
-	return profile
-}
-
-func initTestData() TestData {
-	randSuffix := rand.Intn(100000)
-	username := fmt.Sprintf("test-%d", randSuffix)
-	password := "asdf1234"
-	email := fmt.Sprintf("test-%d@deis.io", randSuffix)
-	keyName := fmt.Sprintf("deiskey-%v", randSuffix)
-
-	registerHTTP(getController(), username, password, email)
-	profilePath := loginHTTP(getController(), username, password)
-
-	keyPath := createKey(username, keyName)
-	// Write out a git+ssh wrapper file to avoid known_hosts warnings
-	gitSSH = path.Join(testHome, username, ".ssh", "git-ssh")
-	sshFlags := "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
-	if debug {
-		sshFlags = sshFlags + " -v"
-	}
-	ioutil.WriteFile(gitSSH, []byte(fmt.Sprintf(
-		"#!/bin/sh\nSSH_ORIGINAL_COMMAND=\"ssh $@\"\nexec /usr/bin/ssh %s -i %s \"$@\"\n",
-		sshFlags, keyPath)), 0777)
-
-	sess, err := start("deis keys:add %s.pub", username, keyPath)
-	Eventually(sess, defaultMaxTimeout).Should(Say("Uploading %s.pub to deis... done", keyName))
-	Eventually(sess).Should(Exit(0))
-	Expect(err).NotTo(HaveOccurred())
-
-	return TestData{
-		Username:      username,
-		Password:      password,
-		Email:         email,
-		KeyName:       keyName,
-		KeyPath:       keyPath,
-		ControllerURL: getController(),
-		Profile:       username,
-		ProfilePath:   profilePath,
-	}
-}

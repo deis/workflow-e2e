@@ -4,8 +4,15 @@ import (
 	"fmt"
 	"math/rand"
 	"net/http"
-	"os"
 	"strconv"
+
+	"github.com/deis/workflow-e2e/tests/cmd"
+	"github.com/deis/workflow-e2e/tests/cmd/apps"
+	"github.com/deis/workflow-e2e/tests/cmd/auth"
+	"github.com/deis/workflow-e2e/tests/cmd/builds"
+	"github.com/deis/workflow-e2e/tests/cmd/domains"
+	"github.com/deis/workflow-e2e/tests/model"
+	"github.com/deis/workflow-e2e/tests/settings"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -13,143 +20,126 @@ import (
 	. "github.com/onsi/gomega/gexec"
 )
 
-func getRandDomain() string {
-	return fmt.Sprintf("my-custom-%d.domain.com", rand.Intn(999999999))
-}
+var _ = Describe("deis domains", func() {
 
-// TODO: move to sister dir/package 'common'
-//       for example, these could live in common/domains.go
-// demains-specific common actions and expectations
-func addDomain(profile string, domain, appName string) {
-	addOrRemoveDomain(profile, domain, appName, "add")
-}
+	Context("with an existing user", func() {
 
-func removeDomain(profile string, domain, appName string) {
-	addOrRemoveDomain(profile, domain, appName, "remove")
-}
-
-func addOrRemoveDomain(profile string, domain, appName, addOrRemove string) {
-	// Explicitly build literal substring since 'domain'
-	// may be a wildcard domain ('*.foo.com') and we don't want Gomega
-	// interpreting this string as a regexp
-	var substring string
-
-	sess, err := start("deis domains:%s %s --app=%s", profile, addOrRemove, domain, appName)
-	if addOrRemove == "add" {
-		substring = fmt.Sprintf("Adding %s to %s...", domain, appName)
-	} else {
-		substring = fmt.Sprintf("Removing %s from %s...", domain, appName)
-	}
-	Eventually(sess.Wait().Out.Contents()).Should(ContainSubstring(substring))
-	Eventually(sess, defaultMaxTimeout).Should(Say("done"))
-	Eventually(sess).Should(Exit(0))
-	Expect(err).NotTo(HaveOccurred())
-}
-
-var _ = Describe("Domains", func() {
-	var testApp App
-	var domain string
-	var testData TestData
-
-	Context("with app yet to be deployed", func() {
+		var user model.User
 
 		BeforeEach(func() {
-			testData = initTestData()
-			domain = getRandDomain()
-			gitInit()
-
-			testApp.Name = getRandAppName()
-			createApp(testData.Profile, testApp.Name)
-		})
-
-		It("can list domains", func() {
-			sess, err := start("deis domains:list --app=%s", testData.Profile, testApp.Name)
-			Eventually(sess).Should(Say("=== %s Domains", testApp.Name))
-			Eventually(sess).Should(Say("%s", testApp.Name))
-			Eventually(sess).Should(Exit(0))
-			Expect(err).NotTo(HaveOccurred())
-		})
-
-		It("can add and remove domains", func() {
-			sess, err := start("deis domains:add %s --app=%s", testData.Profile, domain, testApp.Name)
-			Eventually(sess).Should(Say("Adding %s to %s...", domain, testApp.Name))
-			Eventually(sess, defaultMaxTimeout).Should(Say("done"))
-			Eventually(sess).Should(Exit(0))
-			Expect(err).NotTo(HaveOccurred())
-
-			sess, err = start("deis domains:remove %s --app=%s", testData.Profile, domain, testApp.Name)
-			Eventually(sess).Should(Say("Removing %s from %s...", domain, testApp.Name))
-			Eventually(sess, defaultMaxTimeout).Should(Say("done"))
-		})
-	})
-
-	Context("with a deployed app", func() {
-		var curlCmd Cmd
-		var cmdRetryTimeout int
-		var testData TestData
-
-		BeforeEach(func() {
-			testData = initTestData()
-			cmdRetryTimeout = 60
-			domain = getRandDomain()
-			os.Chdir("example-go")
-			appName := getRandAppName()
-			createApp(testData.Profile, appName)
-			testApp = deployApp(testData.Profile, appName)
+			user = auth.Register()
 		})
 
 		AfterEach(func() {
-			defer os.Chdir("..")
+			auth.Cancel(user)
 		})
 
-		It("can add, list, and remove domains", func() {
-			sess, err := start("deis domains:list --app=%s", testData.Profile, testApp.Name)
-			Eventually(sess).Should(Say("=== %s Domains", testApp.Name))
-			Eventually(sess).Should(Say("%s", testApp.Name))
-			Eventually(sess).Should(Exit(0))
-			Expect(err).NotTo(HaveOccurred())
+		Context("who owns an existing app", func() {
 
-			sess, err = start("deis domains:add %s --app=%s", testData.Profile, domain, testApp.Name)
-			Eventually(sess).Should(Say("Adding %s to %s...", domain, testApp.Name))
-			Eventually(sess, defaultMaxTimeout).Should(Say("done"))
-			Eventually(sess).Should(Exit(0))
-			Expect(err).NotTo(HaveOccurred())
+			var app model.App
 
-			sess, err = start("deis domains:list --app=%s", testData.Profile, testApp.Name)
-			Eventually(sess).Should(Say("=== %s Domains", testApp.Name))
-			Eventually(sess).Should(Say("%s", domain))
-			Eventually(sess).Should(Exit(0))
-			Expect(err).NotTo(HaveOccurred())
+			BeforeEach(func() {
+				app = apps.Create(user, "--no-remote")
+			})
 
-			// curl app at both root and custom domain, both should return http.StatusOK
-			curlCmd = Cmd{CommandLineString: fmt.Sprintf(`curl -sL -w "%%{http_code}\\n" "%s" -o /dev/null`, testApp.URL)}
-			Eventually(cmdWithRetry(curlCmd, strconv.Itoa(http.StatusOK), cmdRetryTimeout)).Should(BeTrue())
-			curlCmd = Cmd{CommandLineString: fmt.Sprintf(`curl -sL -H "Host: %s" -w "%%{http_code}\\n" "%s" -o /dev/null`, domain, testApp.URL)}
-			Eventually(cmdWithRetry(curlCmd, strconv.Itoa(http.StatusOK), cmdRetryTimeout)).Should(BeTrue())
+			AfterEach(func() {
+				apps.Destroy(user, app)
+			})
 
-			sess, err = start("deis domains:remove %s --app=%s", testData.Profile, domain, testApp.Name)
-			Eventually(sess).Should(Say("Removing %s from %s...", domain, testApp.Name))
-			Eventually(sess, defaultMaxTimeout).Should(Say("done"))
-			Eventually(sess).Should(Exit(0))
-			Expect(err).NotTo(HaveOccurred())
+			Specify("that user can list that app's domains", func() {
+				sess, err := cmd.Start("deis domains:list --app=%s", &user, app.Name)
+				Eventually(sess).Should(Say("=== %s Domains", app.Name))
+				Eventually(sess).Should(Say("%s", app.Name))
+				Expect(err).NotTo(HaveOccurred())
+				Eventually(sess).Should(Exit(0))
+			})
 
-			// attempt to remove non-existent domain
-			sess, err = start("deis domains:remove %s --app=%s", testData.Profile, domain, testApp.Name)
-			Eventually(sess.Err, defaultMaxTimeout).Should(Say("404 Not Found"))
-			Eventually(sess).Should(Exit(1))
+			Specify("that user can add domains to that app", func() {
+				domain := getRandDomain()
+				sess, err := cmd.Start("deis domains:add %s --app=%s", &user, domain, app.Name)
+				Eventually(sess).Should(Say("Adding %s to %s...", domain, app.Name))
+				Eventually(sess, settings.MaxEventuallyTimeout).Should(Say("done"))
+				Expect(err).NotTo(HaveOccurred())
+				Eventually(sess).Should(Exit(0))
+			})
 
-			sess, err = start("deis domains:list --app=%s", testData.Profile, testApp.Name)
-			Eventually(sess).Should(Say("=== %s Domains", testApp.Name))
-			Eventually(sess).Should(Say("%s", testApp.Name))
-			Eventually(sess).Should(Not(Say("%s", domain)))
-			Eventually(sess).Should(Exit(0))
-			Expect(err).NotTo(HaveOccurred())
+			Specify("that user cannot remove a non-existent domain from that app", func() {
+				sess, err := cmd.Start("deis domains:remove --app=%s %s", &user, app.Name, "non.existent.domain")
+				Eventually(sess.Err, settings.MaxEventuallyTimeout).Should(Say("404 Not Found"))
+				Expect(err).NotTo(HaveOccurred())
+				Eventually(sess).Should(Exit(1))
+			})
 
-			// curl app at both root and custom domain, custom should return http.StatusNotFound
-			curlCmd = Cmd{CommandLineString: fmt.Sprintf(`curl -sL -w "%%{http_code}\\n" "%s" -o /dev/null`, testApp.URL)}
-			Eventually(cmdWithRetry(curlCmd, strconv.Itoa(http.StatusOK), cmdRetryTimeout)).Should(BeTrue())
-			curlCmd = Cmd{CommandLineString: fmt.Sprintf(`curl -sL -H "Host: %s" -w "%%{http_code}\\n" "%s" -o /dev/null`, domain, testApp.URL)}
-			Eventually(cmdWithRetry(curlCmd, strconv.Itoa(http.StatusNotFound), cmdRetryTimeout)).Should(BeTrue())
+			Context("with a domain added to it", func() {
+
+				var domain string
+
+				BeforeEach(func() {
+					domain = getRandDomain()
+					domains.Add(user, app, domain)
+				})
+
+				Specify("that user can remove that domain from that app", func() {
+					sess, err := cmd.Start("deis domains:remove %s --app=%s", &user, domain, app.Name)
+					Eventually(sess).Should(Say("Removing %s from %s...", domain, app.Name))
+					Eventually(sess, settings.MaxEventuallyTimeout).Should(Say("done"))
+					Expect(err).NotTo(HaveOccurred())
+					Eventually(sess).Should(Exit(0))
+				})
+
+			})
+
 		})
+
+		Context("who owns an existing app that has already been deployed", func() {
+
+			var app model.App
+
+			BeforeEach(func() {
+				app = apps.Create(user, "--no-remote")
+				builds.Create(user, app)
+			})
+
+			AfterEach(func() {
+				apps.Destroy(user, app)
+			})
+
+			Context("with a domain added to it", func() {
+
+				cmdRetryTimeout := 60
+
+				var domain string
+
+				BeforeEach(func() {
+					domain = getRandDomain()
+					domains.Add(user, app, domain)
+				})
+
+				AfterEach(func() {
+					domains.Remove(user, app, domain)
+					// App can no longer be accessed at the previously associated domain
+					curlCmd := model.Cmd{CommandLineString: fmt.Sprintf(`curl -sL -H "Host: %s" -w "%%{http_code}\\n" "%s" -o /dev/null`, domain, app.URL)}
+					Eventually(cmd.Retry(curlCmd, strconv.Itoa(http.StatusNotFound), cmdRetryTimeout)).Should(BeTrue())
+				})
+
+				Specify("that app can be accessed at its usual address", func() {
+					curlCmd := model.Cmd{CommandLineString: fmt.Sprintf(`curl -sL -w "%%{http_code}\\n" "%s" -o /dev/null`, app.URL)}
+					Eventually(cmd.Retry(curlCmd, strconv.Itoa(http.StatusOK), cmdRetryTimeout)).Should(BeTrue())
+				})
+
+				Specify("that app can be accessed at the associated domain", func() {
+					curlCmd := model.Cmd{CommandLineString: fmt.Sprintf(`curl -sL -H "Host: %s" -w "%%{http_code}\\n" "%s" -o /dev/null`, domain, app.URL)}
+					Eventually(cmd.Retry(curlCmd, strconv.Itoa(http.StatusOK), cmdRetryTimeout)).Should(BeTrue())
+				})
+
+			})
+
+		})
+
 	})
+
 })
+
+func getRandDomain() string {
+	return fmt.Sprintf("my-custom-%d.domain.com", rand.Intn(999999999))
+}

@@ -1,10 +1,15 @@
 package tests
 
 import (
-	"os"
-	"os/exec"
 	"regexp"
 	"strings"
+
+	"github.com/deis/workflow-e2e/tests/cmd"
+	"github.com/deis/workflow-e2e/tests/cmd/apps"
+	"github.com/deis/workflow-e2e/tests/cmd/auth"
+	"github.com/deis/workflow-e2e/tests/cmd/builds"
+	"github.com/deis/workflow-e2e/tests/model"
+	"github.com/deis/workflow-e2e/tests/settings"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo/extensions/table"
@@ -13,105 +18,136 @@ import (
 	. "github.com/onsi/gomega/gexec"
 )
 
-var _ = Describe("Tags", func() {
+var _ = Describe("deis tags", func() {
 
-	Context("with a deployed app", func() {
-		var testApp App
-		var testData TestData
+	Context("with an existing user", func() {
+
+		var user model.User
 
 		BeforeEach(func() {
-			// use the "kubectl" executable in the search $PATH
-			if _, err := exec.LookPath("kubectl"); err != nil {
-				Skip("kubectl not found in search $PATH")
-			}
-			testData = initTestData()
-			os.Chdir("example-go")
-			appName := getRandAppName()
-			createApp(testData.Profile, appName)
-			testApp = deployApp(testData.Profile, appName)
+			user = auth.Register()
 		})
 
-		It("can set and unset tags", func() {
-			// can list tags
-			sess, err := start("deis tags:list", testData.Profile)
-			Eventually(sess).Should(Say("=== %s Tags", testApp.Name))
-			Eventually(sess).Should(Exit(0))
-			Expect(err).NotTo(HaveOccurred())
-
-			// set an invalid tag
-			sess, err = start("deis tags:set munkafolyamat=yeah", testData.Profile)
-			Eventually(sess, defaultMaxTimeout).ShouldNot(Say("=== %s Tags", testApp.Name))
-			Eventually(sess).ShouldNot(Say(`munkafolyamat\s+yeah`, testApp.Name))
-			Eventually(sess.Err).Should(Say("400 Bad Request"))
-			Eventually(sess).Should(Exit(1))
-
-			// list tags
-			sess, err = start("deis tags:list", testData.Profile)
-			Eventually(sess).Should(Say("=== %s Tags", testApp.Name))
-			Eventually(sess).ShouldNot(Say(`munkafolyamat\s+yeah`, testApp.Name))
-			Eventually(sess).Should(Exit(0))
-			Expect(err).NotTo(HaveOccurred())
-
-			// find a valid tag to set
-			cmd := "kubectl get nodes -o jsonpath={.items[*].metadata..labels}"
-			// use original $HOME dir or kubectl can't find its config
-			sess, err = start("HOME=%s %s", "", homeHome, cmd)
-			Eventually(sess).Should(Exit(0))
-			Expect(err).NotTo(HaveOccurred())
-			// grep output like "map[kubernetes.io/hostname:192.168.64.2 node:worker1]"
-			re := regexp.MustCompile(`([\-\w\.]{0,253}/?[-_\.\w]{1,63}:[-_\.\w]{1,63})`)
-			pairs := re.FindAllString(string(sess.Out.Contents()), -1)
-			// use the first key:value pair found
-			label := strings.Split(pairs[0], ":")
-
-			// set a valid tag
-			sess, err = start("deis tags:set %s=%s", testData.Profile, label[0], label[1])
-			Eventually(sess, defaultMaxTimeout).Should(Say("=== %s Tags", testApp.Name))
-			Eventually(sess).Should(Say(`%s\s+%s`, label[0], label[1]))
-			Eventually(sess).Should(Exit(0))
-			Expect(err).NotTo(HaveOccurred())
-
-			// list tags
-			sess, err = start("deis tags:list", testData.Profile)
-			Eventually(sess).Should(Say("=== %s Tags", testApp.Name))
-			Eventually(sess).Should(Say(`%s\s+%s`, label[0], label[1]))
-			Eventually(sess).Should(Exit(0))
-			Expect(err).NotTo(HaveOccurred())
-
-			// unset an invalid tag
-			sess, err = start("deis tags:unset munkafolyamat", testData.Profile)
-			// TODO: should unsetting a bogus tag return 0 (success?)
-			Eventually(sess, defaultMaxTimeout).Should(Say("=== %s Tags", testApp.Name))
-			Eventually(sess).ShouldNot(Say(`munkafolyamat\s+yeah`, testApp.Name))
-			Eventually(sess).Should(Exit(0))
-			Expect(err).NotTo(HaveOccurred())
-
-			// unset a valid tag
-			sess, err = start("deis tags:unset %s", testData.Profile, label[0])
-			Eventually(sess, defaultMaxTimeout).Should(Say("=== %s Tags", testApp.Name))
-			Eventually(sess).ShouldNot(Say(`%s\s+%s`, label[0], label[1]))
-			Eventually(sess).Should(Exit(0))
-			Expect(err).NotTo(HaveOccurred())
-
-			// list tags
-			sess, err = start("deis tags:list", testData.Profile)
-			Eventually(sess).Should(Say("=== %s Tags", testApp.Name))
-			Eventually(sess).ShouldNot(Say(`%s\s+%s`, label[0], label[1]))
-			Eventually(sess).ShouldNot(Say(`munkafolyamat\s+yeah`, testApp.Name))
-			Eventually(sess).Should(Exit(0))
-			Expect(err).NotTo(HaveOccurred())
+		AfterEach(func() {
+			auth.Cancel(user)
 		})
+
+		Context("who owns an existing app that has already been deployed", func() {
+
+			var app model.App
+
+			BeforeEach(func() {
+				app = apps.Create(user, "--no-remote")
+				builds.Create(user, app)
+			})
+
+			AfterEach(func() {
+				apps.Destroy(user, app)
+			})
+
+			Specify("that user can list that app's tags", func() {
+				sess, err := cmd.Start("deis tags:list --app=%s", &user, app.Name)
+				Eventually(sess).Should(Say("=== %s Tags", app.Name))
+				Expect(err).NotTo(HaveOccurred())
+				Eventually(sess).Should(Exit(0))
+			})
+
+			Specify("that user cannot set an invalid tag", func() {
+				sess, err := cmd.Start("deis tags:set --app=%s munkafolyamat=yeah", &user, app.Name)
+				Eventually(sess, settings.MaxEventuallyTimeout).ShouldNot(Say("=== %s Tags", app.Name))
+				Eventually(sess).ShouldNot(Say(`munkafolyamat\s+yeah`, app.Name))
+				Eventually(sess.Err).Should(Say("400 Bad Request"))
+				Expect(err).NotTo(HaveOccurred())
+				Eventually(sess).Should(Exit(1))
+			})
+
+			Specify("that user cannot unset an invalid tag", func() {
+				sess, err := cmd.Start("deis tags:unset --app=%s munkafolyamat", &user, app.Name)
+				// TODO: should unsetting a bogus tag return 0 (success?)
+				Eventually(sess, settings.MaxEventuallyTimeout).Should(Say("=== %s Tags", app.Name))
+				Eventually(sess).ShouldNot(Say(`munkafolyamat\s+yeah`, app.Name))
+				Expect(err).NotTo(HaveOccurred())
+				Eventually(sess).Should(Exit(0))
+			})
+
+			Specify("that user can set a valid tag", func() {
+				// Find a valid tag to set
+				// Use original $HOME dir or else kubectl can't find its config
+				sess, err := cmd.Start("HOME=%s kubectl get nodes -o jsonpath={.items[*].metadata..labels}", nil, settings.ActualHome)
+				Expect(err).NotTo(HaveOccurred())
+				Eventually(sess).Should(Exit(0))
+
+				// grep output like "map[kubernetes.io/hostname:192.168.64.2 node:worker1]"
+				re := regexp.MustCompile(`([\w\.\-]{0,253}/?[-_\.\w]{1,63}:[-_\.\w]{1,63})`)
+				pairs := re.FindAllString(string(sess.Out.Contents()), -1)
+				// Use the first key:value pair found
+				label := strings.Split(pairs[0], ":")
+
+				sess, err = cmd.Start("deis tags:set --app=%s %s=%s", &user, app.Name, label[0], label[1])
+				Eventually(sess, settings.MaxEventuallyTimeout).Should(Say("=== %s Tags", app.Name))
+				Eventually(sess).Should(Say(`%s\s+%s`, label[0], label[1]))
+				Expect(err).NotTo(HaveOccurred())
+				Eventually(sess).Should(Exit(0))
+
+				sess, err = cmd.Start("deis tags:list --app=%s", &user, app.Name)
+				Eventually(sess).Should(Say("=== %s Tags", app.Name))
+				Eventually(sess).Should(Say(`%s\s+%s`, label[0], label[1]))
+				Expect(err).NotTo(HaveOccurred())
+				Eventually(sess).Should(Exit(0))
+			})
+
+			Context("and a tag has already been added to the app", func() {
+
+				var label []string
+
+				BeforeEach(func() {
+					// Find a valid tag to set
+					// Use original $HOME dir or else kubectl can't find its config
+					sess, err := cmd.Start("HOME=%s kubectl get nodes -o jsonpath={.items[*].metadata..labels}", nil, settings.ActualHome)
+					Expect(err).NotTo(HaveOccurred())
+					Eventually(sess).Should(Exit(0))
+
+					// grep output like "map[kubernetes.io/hostname:192.168.64.2 node:worker1]"
+					re := regexp.MustCompile(`([\w\.\-]{0,253}/?[-_\.\w]{1,63}:[-_\.\w]{1,63})`)
+					pairs := re.FindAllString(string(sess.Out.Contents()), -1)
+					// Use the first key:value pair found
+					label = strings.Split(pairs[0], ":")
+
+					sess, err = cmd.Start("deis tags:set --app=%s %s=%s", &user, app.Name, label[0], label[1])
+					Eventually(sess, settings.MaxEventuallyTimeout).Should(Say("=== %s Tags", app.Name))
+					Eventually(sess).Should(Say(`%s\s+%s`, label[0], label[1]))
+					Expect(err).NotTo(HaveOccurred())
+					Eventually(sess).Should(Exit(0))
+				})
+
+				Specify("that user can unset that tag from that app", func() {
+					sess, err := cmd.Start("deis tags:unset --app=%s %s", &user, app.Name, label[0])
+					Eventually(sess, settings.MaxEventuallyTimeout).Should(Say("=== %s Tags", app.Name))
+					Eventually(sess).ShouldNot(Say(`%s\s+%s`, label[0], label[1]))
+					Expect(err).NotTo(HaveOccurred())
+					Eventually(sess).Should(Exit(0))
+
+					sess, err = cmd.Start("deis tags:list --app=%s", &user, app.Name)
+					Eventually(sess).Should(Say("=== %s Tags", app.Name))
+					Eventually(sess).ShouldNot(Say(`%s\s+%s`, label[0], label[1]))
+					Eventually(sess).ShouldNot(Say(`munkafolyamat\s+yeah`, app.Name))
+					Expect(err).NotTo(HaveOccurred())
+					Eventually(sess).Should(Exit(0))
+				})
+
+			})
+
+		})
+
 	})
 
-	DescribeTable("can get command-line help for tags", func(cmd, expected string) {
-
-		sess, err := start(cmd, "")
+	DescribeTable("any user can get command-line help for tags", func(command string, expected string) {
+		sess, err := cmd.Start(command, nil)
 		Eventually(sess).Should(Say(expected))
-		Eventually(sess).Should(Exit(0))
 		Expect(err).NotTo(HaveOccurred())
+		Eventually(sess).Should(Exit(0))
 		// TODO: test that help output was more than five lines long
 	},
-
 		Entry("helps on \"help tags\"",
 			"deis help tags", "Valid commands for tags:"),
 		Entry("helps on \"tags -h\"",

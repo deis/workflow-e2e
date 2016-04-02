@@ -2,9 +2,12 @@ package tests
 
 import (
 	"fmt"
-	"math/rand"
-	"os"
-	"time"
+
+	"github.com/deis/workflow-e2e/tests/cmd"
+	"github.com/deis/workflow-e2e/tests/cmd/auth"
+	"github.com/deis/workflow-e2e/tests/cmd/keys"
+	"github.com/deis/workflow-e2e/tests/model"
+	"github.com/deis/workflow-e2e/tests/settings"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -12,36 +15,42 @@ import (
 	. "github.com/onsi/gomega/gexec"
 )
 
-var _ = Describe("Keys", func() {
-	var testData TestData
+var _ = Describe("deis keys", func() {
 
-	BeforeEach(func() {
-		testData = initTestData()
+	Context("with an existing user", func() {
+
+		var user model.User
+
+		BeforeEach(func() {
+			user = auth.Register()
+		})
+
+		AfterEach(func() {
+			auth.Cancel(user)
+		})
+
+		Context("who has at least one key", func() {
+
+			var keyName string
+
+			BeforeEach(func() {
+				keyName, _ = keys.Add(user)
+			})
+
+			Specify("that user can list their own keys", func() {
+				sess, err := cmd.Start("deis keys:list", &user)
+				Eventually(sess, settings.MaxEventuallyTimeout).Should(Say(fmt.Sprintf("%s ssh-rsa", keyName)))
+				Expect(err).NotTo(HaveOccurred())
+				Eventually(sess).Should(Exit(0))
+			})
+
+		})
+
+		Specify("that user can add and remove keys", func() {
+			keyName, _ := keys.Add(user)
+			keys.Remove(user, keyName)
+		})
+
 	})
 
-	It("can list and remove a key", func() {
-		sess, err := start("deis keys:list", testData.Profile)
-		Eventually(sess, defaultMaxTimeout).Should(Say(fmt.Sprintf("%s ssh-rsa", testData.KeyName)))
-		Eventually(sess).Should(Exit(0))
-		Expect(err).NotTo(HaveOccurred())
-	})
-
-	It("can create and remove keys", func() {
-		tempSSHKeyName := fmt.Sprintf("deiskey-%v", rand.Intn(1000))
-		tempSSHKeyPath := createKey(testData.Username, tempSSHKeyName)
-
-		sess, err := start("deis keys:add %s.pub", testData.Profile, tempSSHKeyPath)
-		Eventually(sess, defaultMaxTimeout).Should(Say("Uploading %s.pub to deis... done", tempSSHKeyName))
-		Eventually(sess).Should(Exit(0))
-		Expect(err).NotTo(HaveOccurred())
-
-		time.Sleep(5 * time.Second) // wait for ssh key to propagate
-
-		sess, err = start("deis keys:remove %s", testData.Profile, tempSSHKeyName)
-		Eventually(sess, defaultMaxTimeout).Should(Say("Removing %s SSH Key... done", tempSSHKeyName))
-		Eventually(sess).Should(Exit(0))
-		Expect(err).NotTo(HaveOccurred())
-
-		os.RemoveAll(fmt.Sprintf("~/.ssh/%s*", tempSSHKeyName))
-	})
 })

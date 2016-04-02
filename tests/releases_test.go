@@ -1,62 +1,94 @@
 package tests
 
 import (
+	"github.com/deis/workflow-e2e/tests/cmd"
+	"github.com/deis/workflow-e2e/tests/cmd/apps"
+	"github.com/deis/workflow-e2e/tests/cmd/auth"
+	"github.com/deis/workflow-e2e/tests/cmd/builds"
+	"github.com/deis/workflow-e2e/tests/model"
+	"github.com/deis/workflow-e2e/tests/settings"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gbytes"
 	. "github.com/onsi/gomega/gexec"
 )
 
-var _ = Describe("Releases", func() {
-	var testApp App
-	var exampleImage string
-	var testData TestData
+var _ = Describe("deis releases", func() {
 
-	Context("with a deployed app", func() {
-		exampleImage = "deis/example-go"
+	Context("with an existing user", func() {
+
+		var user model.User
 
 		BeforeEach(func() {
-			testData = initTestData()
-			gitInit()
-			testApp = App{Name: getRandAppName()}
-			createApp(testData.Profile, testApp.Name)
+			user = auth.Register()
 		})
 
-		It("can deploy the app", func() {
-			// generate v2 release
-			deisPull(testData.Profile, exampleImage, testApp)
-
-			// "can list releases"
-			sess, err := start("deis releases:list -a %s", testData.Profile, testApp.Name)
-			Expect(err).NotTo(HaveOccurred())
-			Eventually(sess, defaultMaxTimeout).Should(Say("=== %s Releases", testApp.Name))
-			Eventually(sess).Should(Say(`v1\s+.*\s+%s created initial release`, testData.Username))
-			Eventually(sess).Should(Exit(0))
-
-			// generate v3 release
-			deisPull(testData.Profile, exampleImage, testApp)
-
-			// "can rollback to a previous release"
-			sess, err = start("deis releases:rollback v2 -a %s", testData.Profile, testApp.Name)
-			Expect(err).NotTo(HaveOccurred())
-			Eventually(sess).Should(Say(`Rolling back to`))
-			Eventually(sess, defaultMaxTimeout).Should(Say(`...done`))
-			Eventually(sess).Should(Exit(0))
-
-			// "can get info on releases"
-			sess, err = start("deis releases:info v2 -a %s", testData.Profile, testApp.Name)
-			Expect(err).NotTo(HaveOccurred())
-			Eventually(sess, defaultMaxTimeout).Should(Say("=== %s Release v2", testApp.Name))
-			Eventually(sess).Should(Say(`config:\s+[\w-]+`))
-			Eventually(sess).Should(Say(`owner:\s+%s`, testData.Username))
-			Eventually(sess).Should(Say(`summary:\s+%s \w+`, testData.Username))
-			// the below updated date has to match a string like 2015-12-22T21:20:31UTC
-			Eventually(sess).Should(Say(`updated:\s+[\w\-\:]+UTC`))
-			Eventually(sess).Should(Say(`uuid:\s+[0-9a-f\-]+`))
-			Eventually(sess).Should(Exit(0))
-
-			//TODO: add actions/validations around scenario described in
-			// https://github.com/deis/controller/issues/540
+		AfterEach(func() {
+			auth.Cancel(user)
 		})
+
+		Context("who owns an existing app that has already been deployed", func() {
+
+			var app model.App
+
+			BeforeEach(func() {
+				app = apps.Create(user, "--no-remote")
+				builds.Create(user, app)
+			})
+
+			AfterEach(func() {
+				apps.Destroy(user, app)
+			})
+
+			Specify("that user can list that app's releases", func() {
+				sess, err := cmd.Start("deis releases:list -a %s", &user, app.Name)
+				Eventually(sess, settings.MaxEventuallyTimeout).Should(Say("=== %s Releases", app.Name))
+				Eventually(sess).Should(Say(`v1\s+.*\s+%s created initial release`, user.Username))
+				Expect(err).NotTo(HaveOccurred())
+				Eventually(sess).Should(Exit(0))
+			})
+
+			Specify("that user can get info on one of the app's releases", func() {
+				sess, err := cmd.Start("deis releases:info v2 -a %s", &user, app.Name)
+				Eventually(sess, settings.MaxEventuallyTimeout).Should(Say("=== %s Release v2", app.Name))
+				Eventually(sess).Should(Say(`config:\s+[\w-]+`))
+				Eventually(sess).Should(Say(`owner:\s+%s`, user.Username))
+				Eventually(sess).Should(Say(`summary:\s+%s \w+`, user.Username))
+				Expect(err).NotTo(HaveOccurred())
+				Eventually(sess).Should(Exit(0))
+			})
+
+			Context("and that app has three releases", func() {
+
+				BeforeEach(func() {
+					builds.Create(user, app)
+				})
+
+				Specify("that user can roll the application back to the second release", func() {
+					sess, err := cmd.Start("deis releases:rollback v2 -a %s", &user, app.Name)
+					Eventually(sess).Should(Say(`Rolling back to`))
+					Eventually(sess, settings.MaxEventuallyTimeout).Should(Say(`...done`))
+					Expect(err).NotTo(HaveOccurred())
+					Eventually(sess).Should(Exit(0))
+
+					sess, err = cmd.Start("deis releases:info v2 -a %s", &user, app.Name)
+					Eventually(sess, settings.MaxEventuallyTimeout).Should(Say("=== %s Release v2", app.Name))
+					Eventually(sess).Should(Say(`config:\s+[\w-]+`))
+					Eventually(sess).Should(Say(`owner:\s+%s`, user.Username))
+					Eventually(sess).Should(Say(`summary:\s+%s \w+`, user.Username))
+
+					// The updated date has to match a string like 2015-12-22T21:20:31UTC:
+					Eventually(sess).Should(Say(`updated:\s+[\w\-\:]+UTC`))
+					Eventually(sess).Should(Say(`uuid:\s+[0-9a-f\-]+`))
+					Expect(err).NotTo(HaveOccurred())
+					Eventually(sess).Should(Exit(0))
+				})
+
+			})
+
+		})
+
 	})
+
 })

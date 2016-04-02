@@ -1,44 +1,52 @@
 package tests
 
 import (
+	"github.com/deis/workflow-e2e/tests/cmd"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
 
-const noMatch string = "Found no matching command, try 'deis help'"
-const usage string = "Usage: deis <command> [<args>...]"
+var _ = Describe("deis help", func() {
 
-var _ = Describe("Help", func() {
+	usageMsg := "Usage: deis <command> [<args>...]"
+	optionFlagsMsg := "Option flags::"
+	noMatchMsg := "Found no matching command, try 'deis help'"
 
-	It("prints help on --help", func() {
-		output, err := execute("deis %s", "--help")
+	Specify("the --help flag causes the help message to be printed", func() {
+		output, err := cmd.Execute("deis --help")
 		Expect(err).NotTo(HaveOccurred())
-		Expect(output).To(ContainSubstring(usage))
+		Expect(output).To(ContainSubstring(usageMsg))
+		Expect(output).To(ContainSubstring(optionFlagsMsg))
 	})
 
-	It("prints help on -h", func() {
-		output, err := execute("deis %s", "-h")
+	Specify("the -h flag causes the help message to be printed", func() {
+		output, err := cmd.Execute("deis -h")
 		Expect(err).NotTo(HaveOccurred())
-		Expect(output).To(ContainSubstring(usage))
+		Expect(output).To(ContainSubstring(usageMsg))
+		Expect(output).To(ContainSubstring(optionFlagsMsg))
 	})
 
-	It("prints help on help", func() {
-		output, err := execute("deis %s", "help")
+	Specify("the help subcommand causes the help message to be printed", func() {
+		output, err := cmd.Execute("deis help")
 		Expect(err).NotTo(HaveOccurred())
-		Expect(output).To(ContainSubstring(usage))
+		Expect(output).To(ContainSubstring(usageMsg))
+		Expect(output).To(ContainSubstring(optionFlagsMsg))
 	})
 
-	It("defaults to a usage message", func() {
-		output, err := execute("deis")
+	Specify("deis invoked with no flags or subcommands causes the usage message to be printed", func() {
+		output, err := cmd.Execute("deis")
 		Expect(err).To(HaveOccurred())
-		Expect(output).To(ContainSubstring(usage))
+		Expect(output).To(ContainSubstring(usageMsg))
+		Expect(output).NotTo(ContainSubstring(optionFlagsMsg))
 	})
 
-	It("rejects a bogus command", func() {
-		output, err := execute("deis bogus-command")
+	Specify("an invalid subcommand causes an error message to be printed", func() {
+		output, err := cmd.Execute("deis bogus-command")
 		Expect(err).To(HaveOccurred())
 		Expect(output).To(SatisfyAll(
-			ContainSubstring(noMatch),
-			ContainSubstring(usage)))
+			ContainSubstring(noMatchMsg),
+			ContainSubstring(usageMsg)))
 	})
+
 })
