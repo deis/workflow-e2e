@@ -398,7 +398,6 @@ func initTestData() TestData {
 	Eventually(sess).Should(Exit(0))
 	Expect(err).NotTo(HaveOccurred())
 
-	time.Sleep(1 * time.Second) // wait for ssh key to propagate
 	return TestData{
 		Username:      username,
 		Password:      password,
