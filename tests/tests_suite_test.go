@@ -158,9 +158,9 @@ var _ = AfterSuite(func() {
 	for {
 		select {
 		case appName := <-deleteSuccCh:
-			log.Printf("successfully deleted app namespace %s", appName)
+			fmt.Fprintf(GinkgoWriter, "successfully deleted app namespace %s", appName)
 		case err := <-deleteErrCh:
-			log.Printf("error deleting app namespace (%s)", err)
+			fmt.Fprintf(GinkgoWriter, "error deleting app namespace (%s)", err)
 		case <-deleteDoneCh:
 			break
 		}
@@ -288,7 +288,7 @@ func createApp(profile string, name string, options ...string) *Session {
 
 	existed := appNameSet.Add(apps.NameFromString(name))
 	if existed {
-		fmt.Printf("Recoverable error: app %s was already created\n", name)
+		fmt.Fprintf(GinkgoWriter, "Recoverable error: app %s was already created\n", name)
 	}
 
 	for _, option := range options {
