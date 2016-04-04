@@ -2,6 +2,7 @@ package tests
 
 import (
 	"io/ioutil"
+	"log"
 	"os"
 	"runtime"
 	"strings"
@@ -207,7 +208,8 @@ func verifyAppOpen(profile string, url string) {
 	}
 	myShim, err := shims.CreateSystemShim(toShim)
 	if err != nil {
-		panic(err)
+		log.Printf("Error: unable to create system shim %s (%s)", toShim, err)
+		os.Exit(1)
 	}
 	defer shims.RemoveShim(myShim)
 
