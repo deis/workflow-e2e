@@ -24,7 +24,6 @@ import (
 	. "github.com/onsi/gomega/gbytes"
 	. "github.com/onsi/gomega/gexec"
 
-	"github.com/deis/workflow-e2e/apps"
 	"github.com/onsi/ginkgo/reporters"
 )
 
@@ -49,14 +48,14 @@ type TestData struct {
 	ControllerURL string
 }
 
+var adminTestData TestData
+var testRoot, testHome, keyPath, gitSSH string
+
 var (
-	adminTestData                       TestData
-	testRoot, testHome, keyPath, gitSSH string
-	appNameSet                          = apps.NewSet()
-	debug                               = os.Getenv("DEBUG") != ""
-	homeHome                            = os.Getenv("HOME")
-	defaultMaxTimeout                   = getDefaultMaxTimeout()
-	errMissingRouterHostEnvVar          = fmt.Errorf("missing %s", deisRouterServiceHost)
+	debug                      = os.Getenv("DEBUG") != ""
+	homeHome                   = os.Getenv("HOME")
+	defaultMaxTimeout          = getDefaultMaxTimeout()
+	errMissingRouterHostEnvVar = fmt.Errorf("missing %s", deisRouterServiceHost)
 )
 
 const (
@@ -150,21 +149,6 @@ var _ = BeforeEach(func() {
 var _ = AfterSuite(func() {
 	os.Chdir(testHome)
 	os.Setenv("HOME", homeHome)
-	deleteSuccCh := make(chan apps.Name)
-	deleteErrCh := make(chan error)
-	deleteDoneCh := make(chan struct{})
-	go apps.DeleteAll(appNameSet.GetAll(), deleteSuccCh, deleteErrCh, deleteDoneCh)
-	for {
-		select {
-		case appName := <-deleteSuccCh:
-			fmt.Fprintf(GinkgoWriter, "successfully deleted app namespace %s", appName)
-		case err := <-deleteErrCh:
-			fmt.Fprintf(GinkgoWriter, "error deleting app namespace (%s)", err)
-		case <-deleteDoneCh:
-			break
-		}
-	}
-
 })
 
 func logout() {
@@ -284,11 +268,6 @@ func createApp(profile string, name string, options ...string) *Session {
 	Expect(err).NotTo(HaveOccurred())
 	sess.Wait(defaultMaxTimeout)
 	Eventually(sess).Should(Say("created %s", name))
-
-	existed := appNameSet.Add(apps.NameFromString(name))
-	if existed {
-		fmt.Fprintf(GinkgoWriter, "Recoverable error: app %s was already created\n", name)
-	}
 
 	for _, option := range options {
 		if option == "--no-remote" {
