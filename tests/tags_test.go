@@ -59,7 +59,7 @@ var _ = Describe("Tags", func() {
 			Eventually(sess).Should(Exit(0))
 			Expect(err).NotTo(HaveOccurred())
 			// grep output like "map[kubernetes.io/hostname:192.168.64.2 node:worker1]"
-			re := regexp.MustCompile(`([\w\.]{0,253}/?[-_\.\w]{1,63}:[-_\.\w]{1,63})`)
+			re := regexp.MustCompile(`([\-\w\.]{0,253}/?[-_\.\w]{1,63}:[-_\.\w]{1,63})`)
 			pairs := re.FindAllString(string(sess.Out.Contents()), -1)
 			// use the first key:value pair found
 			label := strings.Split(pairs[0], ":")
