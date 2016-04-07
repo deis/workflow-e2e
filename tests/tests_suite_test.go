@@ -99,8 +99,9 @@ func TestTests(t *testing.T) {
 
 	enableJunit := os.Getenv("JUNIT")
 	if enableJunit == "true" {
-		junitReporter := reporters.NewJUnitReporter(filepath.Join(homeHome, "junit.xml"))
-		RunSpecsWithDefaultAndCustomReporters(t, "Deis Workflow", []Reporter{junitReporter})
+		junitFileName := fmt.Sprintf("junit-%d.xml", rand.Intn(999))
+		junitReporter := reporters.NewJUnitReporter(filepath.Join(homeHome, junitFileName))
+		RunSpecsWithDefaultAndCustomReporters(t, "Deis Workflow with junit reporter", []Reporter{junitReporter})
 	} else {
 		RunSpecs(t, "Deis Workflow")
 	}
