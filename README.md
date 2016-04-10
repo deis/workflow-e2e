@@ -28,20 +28,7 @@ The Deis project welcomes contributions from all developers. The high level proc
 
 ## Prerequisities
 
-Before you run them, you'll need a Deis full cluster up and running in Kubernetes. Follow the below instructions to get one running.
-
-First, install [helm](http://helm.sh) and [boot up a kubernetes cluster][install-k8s]. Next, add the
-deis repository to your chart list:
-
-```console
-$ helm repo add deis https://github.com/deis/charts
-```
-
-Then, install Deis!
-
-```console
-$ helm install deis/deis
-```
+Before you run the tests, you'll need a full Deis cluster up and running in Kubernetes. Follow the instructions [here](https://github.com/deis/charts#installation) to get one running.
 
 ## Run the Tests
 
