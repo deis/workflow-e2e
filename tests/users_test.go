@@ -1,25 +1,52 @@
 package tests
 
 import (
+	"github.com/deis/workflow-e2e/tests/cmd"
+	"github.com/deis/workflow-e2e/tests/cmd/auth"
+	"github.com/deis/workflow-e2e/tests/model"
+	"github.com/deis/workflow-e2e/tests/settings"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gbytes"
 	. "github.com/onsi/gomega/gexec"
 )
 
-var _ = Describe("Users", func() {
-	Context("when logged in as a normal user", func() {
-		var testData TestData
+var _ = Describe("deis users", func() {
+
+	Context("with an existing admin", func() {
+
+		admin := model.Admin
+
+		Specify("that admin can list all users", func() {
+			sess, err := cmd.Start("deis users:list", &admin)
+			Eventually(sess).Should(Say("=== Users"))
+			output := string(sess.Out.Contents())
+			Expect(output).To(ContainSubstring(admin.Username))
+			Expect(err).NotTo(HaveOccurred())
+			Eventually(sess).Should(Exit(0))
+		})
+
+	})
+
+	Context("with an existing non-admin user", func() {
+
+		var user model.User
 
 		BeforeEach(func() {
-			testData = initTestData()
+			user = auth.Register()
 		})
 
-		It("can't list all users", func() {
-			sess, err := start("deis users:list", testData.Profile)
-			Eventually(sess.Err, defaultMaxTimeout).Should(Say("403 Forbidden"))
-			Eventually(sess).Should(Exit(1))
+		AfterEach(func() {
+			auth.Cancel(user)
+		})
+
+		Specify("that user cannot list all users", func() {
+			sess, err := cmd.Start("deis users:list", &user)
+			Eventually(sess.Err, settings.MaxEventuallyTimeout).Should(Say("403 Forbidden"))
 			Expect(err).NotTo(HaveOccurred())
+			Eventually(sess).Should(Exit(1))
 		})
 	})
+
 })

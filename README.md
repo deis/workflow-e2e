@@ -1,4 +1,4 @@
-# Deis End to End Tests v2
+# Deis Workflow End to End Tests v2
 
 [![Build Status](https://travis-ci.org/deis/workflow-e2e.svg?branch=master)](https://travis-ci.org/deis/workflow-e2e)
 [![Go Report Card](http://goreportcard.com/badge/deis/workflow-e2e)](http://goreportcard.com/report/deis/workflow-e2e)
@@ -10,7 +10,7 @@ For more information about the Deis Workflow, please visit the main project page
 
 ## Beta Status
 
-This Deis component is currently in beta status, and we welcome your input! If you have feedback, please [submit an issue][issues]. If you'd like to participate in development, please read the "Development" section below and [submit a pull request][prs].
+Deis Workflow (including these tests) is currently in beta status, and we welcome your input! If you have feedback, please [submit an issue][issues]. If you'd like to participate in development, please read the "Development" section below and [submit a pull request][prs].
 
 # About
 
@@ -32,21 +32,99 @@ Before you run the tests, you'll need a full Deis cluster up and running in Kube
 
 ## Run the Tests
 
-To run the entire test suite:
+There are three options for how to execute the tests. These include two options for executing the tests against Deis Workflow installed on a _remote_ Kubernetes cluster, and one option for installing the same tests directly into a Kubernetes cluster and executing them there.
+
+### Remote Execution
+
+Either of two options for remote execution of the test suite require the `DEIS_CONTROLLER_URL` environment variable to be exported. Its value should be the the controller endpoint you would normally use with the `deis register` or `deis login` commands:
+
+```console
+$ export DEIS_CONTROLLER_URL=http://deis.your.cluster
+```
+
+Tests execute in parallel by default. If you wish to control the number of executors, export a value for the `GINKGO_NODES` environment variable:
+
+```console
+$ export GINKGO_NODES=5
+```
+
+If this is not set, Ginkgo will automatically choose a number of test nodes (executors) based on the number of CPU cores _on the machine executing the tests_. It is important to note, however, that test execution is constrained more significantly by the resources of the cluster under test than by the resources of the machine executing the tests. The number of test nodes, therefore, should be explicitly set and scaled in proportion to the resources available in the cluster.
+
+For reference, Workflow's own CI pipeline uses the following:
+
+| Test Nodes | Kubernetes Worker Nodes | Worker Node CPU | Worker Node Memory |
+|------------|-------------------------|-----------------|--------------------|
+| 5          | 3                       | 4 vCPUs         | 15 GB              |
+
+Setting the `GINKGO_NODES` environment variable to a value of `1` will allow serialized execution of all tests in the suite.
+
+#### Native Execution
+
+If you have Go 1.5 or greater already installed and working properly and also have the [Glide](https://github.com/Masterminds/glide) dependency management tool for Go installed, you may clone this repository into your `$GOPATH`:
+
+```console
+git clone git@github.com:deis/workflow-e2e.git $GOPATH/src/github.com/deis/workflow-e2e
+```
+
+One-time execution of the following will resolve the test suite's own dependencies:
+
+```console
+$ make bootstrap
+```
+
+To execute the entire test suite:
 
 ```console
 $ make test-integration
 ```
 
-To run a single test or set of tests, you'll need the [ginkgo](https://github.com/onsi/ginkgo) tool installed. You can then use the `--focus` option:
+To run a single test or set of tests, you'll need the [Ginkgo](https://github.com/onsi/ginkgo) tool installed on your machine:
 
 ```console
-$ ginkgo --focus=Apps .
+$ go get github.com/onsi/ginkgo/ginkgo
+```
+
+You can then use the `--focus` option to run subsets of the test suite:
+
+```console
+$ ginkgo --focus="deis apps" tests
+```
+
+#### Containerized Execution
+
+If you do not have Go 1.5 or greater installed locally, but do have a Docker daemon running locally (or are using docker-machine), you can quite easily execute tests against a remote cluster from within a container.
+
+In this case, you may clone this repository into a path of your own choosing (does not need to be on your `$GOPATH`):
+
+```console
+git clone git@github.com:deis/workflow-e2e.git /path/of/your/choice
+```
+
+Then build the test image and execute the test suite:
+
+```console
+$ make docker-build docker-test-integration
+```
+
+### Within the Cluster
+
+A third option is to run the test suite from within the very cluster that is under test.
+
+To install and start the tests:
+
+```console
+helm install workflow-beta2-e2e
+```
+
+To monitor tests as they execute:
+
+```console
+$ kubectl --namespace=deis logs -f workflow-beta2-e2e tests
 ```
 
 ## Special Note on Resetting Cluster State
 
-Periodically, tests may not clean up after themselves and leave projects, users or other state behind, which will cause lots of test failures (often all tests will fail). If you see this behavior, run these commands to clean up (replace `deis-workflow-qoxhz`) with the name of the deis/workflow pod in your cluster):
+All tests clean up after themselves, however, in the case of test failures or interruptions, automatic cleanup may not always proceed as intended. This may leave projects, users or other state behind, which may impact future executions of the test suite against the same cluster. (Often all tests will fail.) If you see this behavior, run these commands to clean up. (Replace `deis-workflow-qoxhz` with the name of the deis/workflow pod in your cluster.)
 
 ```console
 $ kubectl exec -it deis-workflow-qoxhz python manage.py shell
@@ -55,10 +133,10 @@ Python 2.7.10 (default, Aug 13 2015, 12:27:27)
 >>> from django.contrib.auth import get_user_model
 >>> m = get_user_model()
 >>> m.objects.exclude(username='AnonymousUser').delete()
->>> m.objects.all()                                     
+>>> m.objects.all()
 ```
 
-Note that this is an ongoing issue for which we're planning a more comprehensive fix in [this issue](https://github.com/deis/workflow-e2e/issues/12)).
+Note that this is an ongoing issue for which we're planning [a more comprehensive fix](https://github.com/deis/workflow-e2e/issues/12).
 
 ## License
 

@@ -1,229 +1,205 @@
 package tests
 
 import (
-	"io/ioutil"
-	"log"
 	"os"
-	"runtime"
 	"strings"
 	"time"
+
+	"github.com/deis/workflow-e2e/tests/cmd"
+	"github.com/deis/workflow-e2e/tests/cmd/apps"
+	"github.com/deis/workflow-e2e/tests/cmd/auth"
+	"github.com/deis/workflow-e2e/tests/cmd/builds"
+	"github.com/deis/workflow-e2e/tests/model"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gbytes"
 	. "github.com/onsi/gomega/gexec"
-
-	"github.com/deis/workflow-e2e/shims"
 )
 
-var uuidRegExp = `[0-9a-f]{8}-([0-9a-f]{4}-){3}[0-9a-f]{12}`
+var _ = Describe("deis apps", func() {
 
-var _ = Describe("Apps", func() {
+	Context("with an existing user", func() {
 
-	Context("with no app", func() {
-		var testApp App
-		var testData TestData
+		var user model.User
 
 		BeforeEach(func() {
-			testApp.Name = getRandAppName()
-			testData = initTestData()
-		})
-
-		It("can't get app info", func() {
-			sess, err := start("deis info -a %s", testData.Profile, testApp.Name)
-			Eventually(sess.Err).Should(Say("Not found."))
-			Eventually(sess).Should(Exit(1))
-			Expect(err).NotTo(HaveOccurred())
-		})
-
-		It("can't get app logs", func() {
-			sess, err := start("deis logs -a %s", testData.Profile, testApp.Name)
-			Eventually(sess.Err).Should(Say(`Error: There are currently no log messages. Please check the following things:`))
-			Eventually(sess).Should(Exit(1))
-			Expect(err).NotTo(HaveOccurred())
-		})
-
-		It("can't run a command in the app environment", func() {
-			sess, err := start("deis apps:run echo Hello, 世界", testData.Profile)
-			Eventually(sess).Should(Say("Running 'echo Hello, 世界'..."))
-			Eventually(sess.Err).Should(Say("Not found."))
-			Eventually(sess).ShouldNot(Exit(0))
-			Expect(err).NotTo(HaveOccurred())
-		})
-
-		It("can't open a bogus app URL", func() {
-			sess, err := start("deis open -a %s", testData.Profile, getRandAppName())
-			Eventually(sess.Err).Should(Say("404 Not Found"))
-			Eventually(sess).Should(Exit(1))
-			Expect(err).NotTo(HaveOccurred())
-		})
-
-	})
-
-	Context("when creating an app", func() {
-		var testApp App
-		var testData TestData
-
-		BeforeEach(func() {
-			testData = initTestData()
-			testApp.Name = getRandAppName()
-			gitInit()
-		})
-
-		It("creates an app with a git remote", func() {
-			sess, err := start("deis apps:create %s", testData.Profile, testApp.Name)
-			Eventually(sess, defaultMaxTimeout).Should(Say("created %s", testApp.Name))
-			Eventually(sess).Should(Say(`Git remote deis added`))
-			Eventually(sess).Should(Say(`remote available at `))
-			Eventually(sess).Should(Exit(0))
-			Expect(err).NotTo(HaveOccurred())
-		})
-
-		It("creates an app with no git remote", func() {
-			sess, err := start("deis apps:create %s --no-remote", testData.Profile, testApp.Name)
-			Eventually(sess, defaultMaxTimeout).Should(Say("created %s", testApp.Name))
-			Eventually(sess).Should(Say("remote available at "))
-			Eventually(sess).ShouldNot(Say("Git remote deis added"))
-			Eventually(sess).Should(Exit(0))
-			Expect(err).NotTo(HaveOccurred())
-		})
-
-		It("creates an app with a custom buildpack", func() {
-			sess, err := start("deis apps:create %s --buildpack https://example.com", testData.Profile, testApp.Name)
-			Eventually(sess, defaultMaxTimeout).Should(Say("created %s", testApp.Name))
-			Eventually(sess).Should(Say("Git remote deis added"))
-			Eventually(sess).Should(Say("remote available at "))
-			Eventually(sess).Should(Exit(0))
-			Expect(err).NotTo(HaveOccurred())
-
-			sess, err = start("deis config:list -a %s", testData.Profile, testApp.Name)
-			Eventually(sess).Should(Say("BUILDPACK_URL"))
-			Eventually(sess).Should(Exit(0))
-			Expect(err).NotTo(HaveOccurred())
-		})
-	})
-
-	Context("with a deployed app", func() {
-		var testApp App
-		var testData TestData
-
-		BeforeEach(func() {
-			testData = initTestData()
-			os.Chdir("example-go")
-			appName := getRandAppName()
-			createApp(testData.Profile, appName)
-			testApp = deployApp(testData.Profile, appName)
+			user = auth.Register()
 		})
 
 		AfterEach(func() {
-			defer os.Chdir("..")
+			auth.Cancel(user)
 		})
 
-		It("can't create an existing app", func() {
-			sess, err := start("deis apps:create %s", testData.Profile, testApp.Name)
-			Eventually(sess.Err).Should(Say("App with this id already exists."))
-			Eventually(sess).ShouldNot(Exit(0))
-			Expect(err).NotTo(HaveOccurred())
+		Specify("that user can create an app without a git remote", func() {
+			app := apps.Create(user, "--no-remote")
+			apps.Destroy(user, app)
 		})
 
-		It("can get app info", func() {
-			verifyAppInfo(testData.Profile, testData.Username, testApp.Name, testApp.URL)
-		})
-
-		// V broken
-		XIt("can get app logs", func() {
-			sess, err := start("deis logs", testData.Profile)
-			Eventually(sess).Should(SatisfyAll(
-				Say("%s\\[deis-controller\\]\\: %s created initial release", testApp.Name, testData.Username),
-				Say("%s\\[deis-controller\\]\\: %s deployed", testApp.Name, testData.Username),
-				Say("%s\\[deis-controller\\]\\: %s scaled containers", testApp.Name, testData.Username)))
-			Eventually(sess).Should(Exit(0))
-			Expect(err).NotTo(HaveOccurred())
-		})
-
-		It("can open the app's URL", func() {
-			verifyAppOpen(testData.Profile, testApp.URL)
-		})
-
-		It("can run a command in the app environment", func() {
-			sess, err := start("deis apps:run echo Hello, 世界", testData.Profile)
-			Eventually(sess, (1 * time.Minute)).Should(Say("Hello, 世界"))
-			Eventually(sess).Should(Exit(0))
-			Expect(err).NotTo(HaveOccurred())
-		})
-
-		It("can transfer the app to another owner", func() {
-			sess, err := start("deis apps:transfer %s", testData.Profile, adminTestData.Username)
+		Specify("that user can create an app that uses a custom buildpack", func() {
+			app := apps.Create(user, "--no-remote", "--buildpack https://weird-buildpacks.io/lisp")
+			defer apps.Destroy(user, app)
+			sess, err := cmd.Start("deis config:list -a %s", &user, app.Name)
+			Eventually(sess).Should(Say("BUILDPACK_URL"))
 			Expect(err).NotTo(HaveOccurred())
 			Eventually(sess).Should(Exit(0))
-			sess, err = start("deis info -a %s", testData.Profile, testApp.Name)
-			Eventually(sess.Err).Should(Say("You do not have permission to perform this action."))
-			Eventually(sess).Should(Exit(1))
 		})
+
+		Context("and an app that does not exist", func() {
+
+			bogusAppName := "bogus-app-name"
+
+			Specify("that user cannot get information about that app", func() {
+				sess, err := cmd.Start("deis info -a %s", &user, bogusAppName)
+				Eventually(sess.Err).Should(Say("Not found."))
+				Expect(err).NotTo(HaveOccurred())
+				Eventually(sess).Should(Exit(1))
+			})
+
+			Specify("that user cannot retrieve logs for that app", func() {
+				sess, err := cmd.Start("deis logs -a %s", &user, bogusAppName)
+				Eventually(sess.Err).Should(Say(`Error: There are currently no log messages. Please check the following things:`))
+				Expect(err).NotTo(HaveOccurred())
+				Eventually(sess).Should(Exit(1))
+			})
+
+			Specify("that user cannot open that app", func() {
+				sess, err := cmd.Start("deis open -a %s", &user, bogusAppName)
+				Eventually(sess.Err).Should(Say("404 Not Found"))
+				Expect(err).NotTo(HaveOccurred())
+				Eventually(sess).Should(Exit(1))
+			})
+
+			Specify("that user cannot run a command in that app's environment", func() {
+				sess, err := cmd.Start("deis apps:run -a %s echo Hello, 世界", &user, bogusAppName)
+				Eventually(sess).Should(Say("Running 'echo Hello, 世界'..."))
+				Eventually(sess.Err).Should(Say("Not found."))
+				Expect(err).NotTo(HaveOccurred())
+				Eventually(sess).ShouldNot(Exit(0))
+			})
+
+		})
+
+		Context("who owns an existing app", func() {
+
+			var app model.App
+
+			BeforeEach(func() {
+				app = apps.Create(user, "--no-remote")
+			})
+
+			AfterEach(func() {
+				apps.Destroy(user, app)
+			})
+
+			Specify("that user cannot create a new app with the same name", func() {
+				sess, err := cmd.Start("deis apps:create %s", &user, app.Name)
+				Eventually(sess.Err).Should(Say("App with this id already exists."))
+				Expect(err).NotTo(HaveOccurred())
+				Eventually(sess).ShouldNot(Exit(0))
+			})
+
+			Context("and another user also exists", func() {
+
+				var otherUser model.User
+
+				BeforeEach(func() {
+					otherUser = auth.Register()
+				})
+
+				AfterEach(func() {
+					auth.Cancel(otherUser)
+				})
+
+				Specify("that first user can transfer ownership to the other user", func() {
+					sess, err := cmd.Start("deis apps:transfer --app=%s %s", &user, app.Name, otherUser.Username)
+					Expect(err).NotTo(HaveOccurred())
+					Eventually(sess).Should(Exit(0))
+					sess, err = cmd.Start("deis info -a %s", &user, app.Name)
+					Eventually(sess.Err).Should(Say("You do not have permission to perform this action."))
+					Expect(err).NotTo(HaveOccurred())
+					Eventually(sess).Should(Exit(1))
+					// Transer back or else cleanup will fail.
+					sess, err = cmd.Start("deis apps:transfer --app=%s %s", &otherUser, app.Name, user.Username)
+					Expect(err).NotTo(HaveOccurred())
+					Eventually(sess).Should(Exit(0))
+				})
+
+			})
+
+		})
+
+		Context("who has a local git repo containing source code", func() {
+
+			BeforeEach(func() {
+				output, err := cmd.Execute(`git clone https://github.com/deis/example-go.git`)
+				Expect(err).NotTo(HaveOccurred(), output)
+			})
+
+			Specify("that user can create an app with a git remote", func() {
+				os.Chdir("example-go")
+				app := apps.Create(user)
+				apps.Destroy(user, app)
+			})
+
+		})
+
+		Context("who owns an existing app that has already been deployed", func() {
+
+			uuidRegExp := `[0-9a-f]{8}-([0-9a-f]{4}-){3}[0-9a-f]{12}`
+			procsRegexp := `(%s-v\d+-[\w-]+) up \(v\d+\)`
+
+			var app model.App
+
+			BeforeEach(func() {
+				app = apps.Create(user, "--no-remote")
+				builds.Create(user, app)
+			})
+
+			AfterEach(func() {
+				apps.Destroy(user, app)
+			})
+
+			Specify("that user can get information about that app", func() {
+				sess, err := cmd.Start("deis info -a %s", &user, app.Name)
+				Eventually(sess).Should(Say("=== %s Application", app.Name))
+				Eventually(sess).Should(Say(`uuid:\s*%s`, uuidRegExp))
+				Eventually(sess).Should(Say(`url:\s*%s`, strings.Replace(app.URL, "http://", "", 1)))
+				Eventually(sess).Should(Say(`owner:\s*%s`, user.Username))
+				Eventually(sess).Should(Say(`id:\s*%s`, app.Name))
+				Eventually(sess).Should(Say("=== %s Processes", app.Name))
+				Eventually(sess).Should(Say(procsRegexp, app.Name))
+				Eventually(sess).Should(Say("=== %s Domains", app.Name))
+				Eventually(sess).Should(Say("%s", app.Name))
+				Expect(err).NotTo(HaveOccurred())
+				Eventually(sess).Should(Exit(0))
+			})
+
+			// Pending: The logging subsystem is not currently installed as part of the workflow-dev
+			// chart.
+			XSpecify("that user can retrieve logs for that app", func() {
+				sess, err := cmd.Start("deis logs -a %s", &user, app.Name)
+				Eventually(sess).Should(SatisfyAll(
+					Say("%s\\[deis-controller\\]\\: %s created initial release", app.Name, user.Username),
+					Say("%s\\[deis-controller\\]\\: %s deployed", app.Name, user.Username),
+					Say("%s\\[deis-controller\\]\\: %s scaled containers", app.Name, user.Username)))
+				Expect(err).NotTo(HaveOccurred())
+				Eventually(sess).Should(Exit(0))
+			})
+
+			Specify("that user can open that app", func() {
+				apps.Open(user, app)
+			})
+
+			Specify("that user can run a command in that app's environment", func() {
+				sess, err := cmd.Start("deis apps:run --app=%s echo Hello, 世界", &user, app.Name)
+				Eventually(sess, (1 * time.Minute)).Should(Say("Hello, 世界"))
+				Expect(err).NotTo(HaveOccurred())
+				Eventually(sess).Should(Exit(0))
+			})
+
+		})
+
 	})
 
-	Context("with a custom buildpack deployed app", func() {
-		var testApp App
-		var testData TestData
-
-		BeforeEach(func() {
-			testData = initTestData()
-			os.Chdir("example-perl")
-			appName := getRandAppName()
-			createApp(testData.Profile, appName, "--buildpack", "https://github.com/miyagawa/heroku-buildpack-perl.git")
-			testApp = deployApp(testData.Profile, appName)
-		})
-
-		It("can get app info", func() {
-			verifyAppInfo(testData.Profile, testData.Username, testApp.Name, testApp.URL)
-		})
-
-		It("can open the app's URL", func() {
-			verifyAppOpen(testData.Profile, testApp.URL)
-		})
-
-	})
 })
-
-func verifyAppInfo(profile string, username string, appName string, url string) {
-	sess, err := start("deis info -a %s", profile, appName)
-	Eventually(sess).Should(Say("=== %s Application", appName))
-	Eventually(sess).Should(Say(`uuid:\s*%s`, uuidRegExp))
-	Eventually(sess).Should(Say(`url:\s*%s`, strings.Replace(url, "http://", "", 1)))
-	Eventually(sess).Should(Say(`owner:\s*%s`, username))
-	Eventually(sess).Should(Say(`id:\s*%s`, appName))
-	Eventually(sess).Should(Say("=== %s Processes", appName))
-	Eventually(sess).Should(Say(procsRegexp, appName))
-	Eventually(sess).Should(Say("=== %s Domains", appName))
-	Eventually(sess).Should(Say("%s", appName))
-	Eventually(sess).Should(Exit(0))
-	Expect(err).NotTo(HaveOccurred())
-}
-
-func verifyAppOpen(profile string, url string) {
-	// the underlying open utility 'deis open' looks for
-	toShim := "open" //darwin
-	if runtime.GOOS == "linux" {
-		toShim = "xdg-open"
-	}
-	myShim, err := shims.CreateSystemShim(toShim)
-	if err != nil {
-		log.Printf("Error: unable to create system shim %s (%s)", toShim, err)
-		os.Exit(1)
-	}
-	defer shims.RemoveShim(myShim)
-
-	// create custom env with custom/prefixed PATH value
-	env := shims.PrependPath(os.Environ(), os.TempDir())
-
-	// invoke functionality under test
-	sess, err := startCmd(Cmd{Env: env, CommandLineString: "DEIS_PROFILE=" + profile + " deis open"})
-	Expect(err).To(BeNil())
-	Eventually(sess).Should(Exit(0))
-	Expect(err).NotTo(HaveOccurred())
-
-	// check shim output
-	output, err := ioutil.ReadFile(myShim.OutFile.Name())
-	Expect(err).NotTo(HaveOccurred())
-	Expect(strings.TrimSpace(string(output))).To(Equal(url))
-}

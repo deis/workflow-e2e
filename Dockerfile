@@ -1,4 +1,6 @@
-FROM quay.io/deis/go-dev:0.9.0
+FROM quay.io/deis/go-dev:0.10.0
+
+ENV JUNIT=true
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends ca-certificates curl wget openssh-client git g++ gcc libc6-dev make bzr git mercurial openssh-client subversion procps && \
@@ -16,3 +18,7 @@ RUN curl -O https://storage.googleapis.com/kubernetes-release/release/v1.1.8/bin
 
 COPY . /go/src/github.com/deis/workflow-e2e
 WORKDIR /go/src/github.com/deis/workflow-e2e
+
+RUN glide install
+
+CMD ["/usr/bin/make", "test-integration"]

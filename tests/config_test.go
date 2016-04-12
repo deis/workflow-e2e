@@ -2,7 +2,13 @@ package tests
 
 import (
 	"io/ioutil"
-	"os"
+
+	"github.com/deis/workflow-e2e/tests/cmd"
+	"github.com/deis/workflow-e2e/tests/cmd/apps"
+	"github.com/deis/workflow-e2e/tests/cmd/auth"
+	"github.com/deis/workflow-e2e/tests/cmd/builds"
+	"github.com/deis/workflow-e2e/tests/model"
+	"github.com/deis/workflow-e2e/tests/settings"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo/extensions/table"
@@ -11,250 +17,230 @@ import (
 	. "github.com/onsi/gomega/gexec"
 )
 
-var _ = Describe("Config", func() {
+var _ = Describe("deis config", func() {
 
-	Context("with a deployed app", func() {
+	Context("with an existing user", func() {
 
-		var testApp App
-		var testData TestData
+		var user model.User
 
 		BeforeEach(func() {
-			testData = initTestData()
-			os.Chdir("example-go")
-			appName := getRandAppName()
-			createApp(testData.Profile, appName)
-			testApp = deployApp(testData.Profile, appName)
+			user = auth.Register()
 		})
 
-		It("can set and list environment variables", func() {
-			sess, err := start("deis config:set POWERED_BY=midi-chlorians", testData.Profile)
-			Expect(err).NotTo(HaveOccurred())
-			Eventually(sess).Should(Say("Creating config"))
-			Eventually(sess, defaultMaxTimeout).Should(Say("=== %s Config", testApp.Name))
-			Eventually(sess).Should(Say(`POWERED_BY\s+midi-chlorians`))
-			Eventually(sess).Should(Exit(0))
-			Expect(err).NotTo(HaveOccurred())
-
-			sess, err = start("deis config:list -a %s", testData.Profile, testApp.Name)
-			Eventually(sess).Should(Say("=== %s Config", testApp.Name))
-			Eventually(sess).Should(Say(`POWERED_BY\s+midi-chlorians`))
-			Eventually(sess).Should(Exit(0))
-			Expect(err).NotTo(HaveOccurred())
-
-			// verify "Powered by midi-chlorians" with curl
-			sess, err = start(`curl -sL "%s"; echo`, testData.Profile, testApp.URL)
-			Eventually(sess).Should(Say("Powered by midi-chlorians"))
-			Eventually(sess).Should(Exit(0))
-			Expect(err).NotTo(HaveOccurred())
-
-			sess, err = start("deis run env -a %s", testData.Profile, testApp.Name)
-			Eventually(sess, defaultMaxTimeout).Should(Say("POWERED_BY=midi-chlorians"))
-			Eventually(sess).Should(Exit(0))
-			Expect(err).NotTo(HaveOccurred())
+		AfterEach(func() {
+			auth.Cancel(user)
 		})
 
-		It("can set an integer environment variable", func() {
-			sess, err := start("deis config:set FOO=1 -a %s", testData.Profile, testApp.Name)
-			Eventually(sess).Should(Say("Creating config"))
-			Eventually(sess, defaultMaxTimeout).Should(Say("=== %s Config", testApp.Name))
-			Eventually(sess).Should(Say(`FOO\s+1`))
-			Eventually(sess).Should(Exit(0))
-			Expect(err).NotTo(HaveOccurred())
+		Context("who owns an existing app that has already been deployed", func() {
 
-			sess, err = start("deis config:list -a %s", testData.Profile, testApp.Name)
-			Eventually(sess, defaultMaxTimeout).Should(Say("=== %s Config", testApp.Name))
-			Eventually(sess).Should(Say(`FOO\s+1`))
-			Eventually(sess).Should(Exit(0))
-			Expect(err).NotTo(HaveOccurred())
+			var app model.App
 
-			sess, err = start("deis run env -a %s", testData.Profile, testApp.Name)
-			Eventually(sess, defaultMaxTimeout).Should(Say("FOO=1"))
-			Eventually(sess).Should(Exit(0))
-			Expect(err).NotTo(HaveOccurred())
-		})
+			BeforeEach(func() {
+				app = apps.Create(user, "--no-remote")
+				builds.Create(user, app)
+			})
 
-		It("can set multiple environment variables at once", func() {
-			sess, err := start("deis config:set FOO=null BAR=nil -a %s", testData.Profile, testApp.Name)
-			Eventually(sess).Should(Say("Creating config"))
-			Eventually(sess, defaultMaxTimeout).Should(Say("=== %s Config", testApp.Name))
-			output := string(sess.Out.Contents())
-			Expect(output).To(MatchRegexp(`FOO\s+null`))
-			Expect(output).To(MatchRegexp(`BAR\s+nil`))
-			Eventually(sess).Should(Exit(0))
-			Expect(err).NotTo(HaveOccurred())
+			AfterEach(func() {
+				apps.Destroy(user, app)
+			})
 
-			sess, err = start("deis config:list -a %s", testData.Profile, testApp.Name)
-			Eventually(sess).Should(Say("=== %s Config", testApp.Name))
-			output = string(sess.Out.Contents())
-			Expect(output).To(MatchRegexp(`FOO\s+null`))
-			Expect(output).To(MatchRegexp(`BAR\s+nil`))
-			Eventually(sess).Should(Exit(0))
-			Expect(err).NotTo(HaveOccurred())
+			Specify("that user can list environment variables on that app", func() {
+				sess, err := cmd.Start("deis config:list -a %s", &user, app.Name)
+				Eventually(sess).Should(Say("=== %s Config", app.Name))
+				Expect(err).NotTo(HaveOccurred())
+				Eventually(sess).Should(Exit(0))
+			})
 
-			sess, err = start("deis run env -a %s", testData.Profile, testApp.Name)
-			Eventually(sess, defaultMaxTimeout).Should(Say("FOO=null"))
-			Eventually(sess, defaultMaxTimeout).Should(Say("BAR=nil"))
-			Eventually(sess).Should(Exit(0))
-			Expect(err).NotTo(HaveOccurred())
-		})
+			Specify("that user can set environment variables on that app", func() {
+				sess, err := cmd.Start("deis config:set -a %s POWERED_BY=midi-chlorians", &user, app.Name)
+				Expect(err).NotTo(HaveOccurred())
+				Eventually(sess).Should(Say("Creating config"))
+				Eventually(sess, settings.MaxEventuallyTimeout).Should(Say("=== %s Config", app.Name))
+				Eventually(sess).Should(Say(`POWERED_BY\s+midi-chlorians`))
+				Expect(err).NotTo(HaveOccurred())
+				Eventually(sess).Should(Exit(0))
 
-		It("can set an environment variable containing spaces", func() {
-			sess, err := start(`deis config:set -a %s POWERED_BY=the\ Deis\ team`, testData.Profile, testApp.Name)
-			Eventually(sess).Should(Say("Creating config"))
-			Eventually(sess, defaultMaxTimeout).Should(Say("=== %s Config", testApp.Name))
-			Eventually(sess).Should(Say(`POWERED_BY\s+the Deis team`))
-			Eventually(sess).Should(Exit(0))
-			Expect(err).NotTo(HaveOccurred())
+				sess, err = cmd.Start("deis config:list -a %s", &user, app.Name)
+				Eventually(sess).Should(Say("=== %s Config", app.Name))
+				Eventually(sess).Should(Say(`POWERED_BY\s+midi-chlorians`))
+				Expect(err).NotTo(HaveOccurred())
+				Eventually(sess).Should(Exit(0))
 
-			sess, err = start("deis config:list -a %s", testData.Profile, testApp.Name)
-			Eventually(sess).Should(Say("=== %s Config", testApp.Name))
-			Eventually(sess).Should(Say(`POWERED_BY\s+the Deis team`))
-			Eventually(sess).Should(Exit(0))
-			Expect(err).NotTo(HaveOccurred())
+				sess, err = cmd.Start("deis run env -a %s", &user, app.Name)
+				Eventually(sess, settings.MaxEventuallyTimeout).Should(Say("POWERED_BY=midi-chlorians"))
+				Expect(err).NotTo(HaveOccurred())
+				Eventually(sess).Should(Exit(0))
+			})
 
-			// verify "Powered by the Deis team" with curl
-			sess, err = start(`curl -sL "%s"; echo`, testData.Profile, testApp.URL)
-			Eventually(sess).Should(Say("Powered by the Deis team"))
-			Eventually(sess).Should(Exit(0))
-			Expect(err).NotTo(HaveOccurred())
+			Specify("that user can set multiple environment variables at once on that app", func() {
+				sess, err := cmd.Start("deis config:set FOO=null BAR=nil -a %s", &user, app.Name)
+				Eventually(sess).Should(Say("Creating config"))
+				Eventually(sess, settings.MaxEventuallyTimeout).Should(Say("=== %s Config", app.Name))
+				output := string(sess.Out.Contents())
+				Expect(output).To(MatchRegexp(`FOO\s+null`))
+				Expect(output).To(MatchRegexp(`BAR\s+nil`))
+				Expect(err).NotTo(HaveOccurred())
+				Eventually(sess).Should(Exit(0))
 
-			sess, err = start("deis run -a %s env", testData.Profile, testApp.Name)
-			Eventually(sess, defaultMaxTimeout).Should(Say("POWERED_BY=the Deis team"))
-			Eventually(sess).Should(Exit(0))
-			Expect(err).NotTo(HaveOccurred())
-		})
+				sess, err = cmd.Start("deis config:list -a %s", &user, app.Name)
+				Eventually(sess).Should(Say("=== %s Config", app.Name))
+				output = string(sess.Out.Contents())
+				Expect(output).To(MatchRegexp(`FOO\s+null`))
+				Expect(output).To(MatchRegexp(`BAR\s+nil`))
+				Expect(err).NotTo(HaveOccurred())
+				Eventually(sess).Should(Exit(0))
 
-		It("can set a multi-line environment variable", func() {
-			value := `This is
+				sess, err = cmd.Start("deis run env -a %s", &user, app.Name)
+				Eventually(sess, settings.MaxEventuallyTimeout).Should(Say("FOO=null"))
+				Eventually(sess, settings.MaxEventuallyTimeout).Should(Say("BAR=nil"))
+				Expect(err).NotTo(HaveOccurred())
+				Eventually(sess).Should(Exit(0))
+			})
+
+			Specify("that user can set an environment variable containing spaces on that app", func() {
+				sess, err := cmd.Start(`deis config:set -a %s POWERED_BY=the\ Deis\ team`, &user, app.Name)
+				Eventually(sess).Should(Say("Creating config"))
+				Eventually(sess, settings.MaxEventuallyTimeout).Should(Say("=== %s Config", app.Name))
+				Eventually(sess).Should(Say(`POWERED_BY\s+the Deis team`))
+				Expect(err).NotTo(HaveOccurred())
+				Eventually(sess).Should(Exit(0))
+
+				sess, err = cmd.Start("deis config:list -a %s", &user, app.Name)
+				Eventually(sess).Should(Say("=== %s Config", app.Name))
+				Eventually(sess).Should(Say(`POWERED_BY\s+the Deis team`))
+				Expect(err).NotTo(HaveOccurred())
+				Eventually(sess).Should(Exit(0))
+
+				sess, err = cmd.Start("deis run -a %s env", &user, app.Name)
+				Eventually(sess, settings.MaxEventuallyTimeout).Should(Say("POWERED_BY=the Deis team"))
+				Expect(err).NotTo(HaveOccurred())
+				Eventually(sess).Should(Exit(0))
+			})
+
+			It("that user can set a multi-line environment variable on that app", func() {
+				value := `This is
 a
 multiline string.`
 
-			sess, err := start(`deis config:set -a %s FOO='%s'`, testData.Profile, testApp.Name, value)
-			Eventually(sess).Should(Say("Creating config"))
-			Eventually(sess, defaultMaxTimeout).Should(Say("=== %s Config", testApp.Name))
-			Eventually(sess).Should(Say(`FOO\s+%s`, value))
-			Eventually(sess).Should(Exit(0))
-			Expect(err).NotTo(HaveOccurred())
+				sess, err := cmd.Start(`deis config:set -a %s FOO='%s'`, &user, app.Name, value)
+				Eventually(sess).Should(Say("Creating config"))
+				Eventually(sess, settings.MaxEventuallyTimeout).Should(Say("=== %s Config", app.Name))
+				Eventually(sess).Should(Say(`FOO\s+%s`, value))
+				Expect(err).NotTo(HaveOccurred())
+				Eventually(sess).Should(Exit(0))
 
-			sess, err = start("deis config:list -a %s", testData.Profile, testApp.Name)
-			Eventually(sess).Should(Say("=== %s Config", testApp.Name))
-			Eventually(sess).Should(Say(`FOO\s+%s`, value))
-			Eventually(sess).Should(Exit(0))
-			Expect(err).NotTo(HaveOccurred())
+				sess, err = cmd.Start("deis config:list -a %s", &user, app.Name)
+				Eventually(sess).Should(Say("=== %s Config", app.Name))
+				Eventually(sess).Should(Say(`FOO\s+%s`, value))
+				Expect(err).NotTo(HaveOccurred())
+				Eventually(sess).Should(Exit(0))
 
-			sess, err = start("deis run -a %s env", testData.Profile, testApp.Name)
-			Eventually(sess, defaultMaxTimeout).Should(Say("FOO=%s", value))
-			Eventually(sess).Should(Exit(0))
-			Expect(err).NotTo(HaveOccurred())
-		})
+				sess, err = cmd.Start("deis run -a %s env", &user, app.Name)
+				Eventually(sess, settings.MaxEventuallyTimeout).Should(Say("FOO=%s", value))
+				Expect(err).NotTo(HaveOccurred())
+				Eventually(sess).Should(Exit(0))
+			})
 
-		It("can set an environment variable with non-ASCII and multibyte chars", func() {
-			sess, err := start("deis config:set FOO=讲台 BAR=Þorbjörnsson BAZ=ноль -a %s", testData.Profile,
-				testApp.Name)
-			Eventually(sess).Should(Say("Creating config"))
-			Eventually(sess, defaultMaxTimeout).Should(Say("=== %s Config", testApp.Name))
-			output := string(sess.Out.Contents())
-			Expect(output).To(MatchRegexp(`FOO\s+讲台`))
-			Expect(output).To(MatchRegexp(`BAR\s+Þorbjörnsson`))
-			Expect(output).To(MatchRegexp(`BAZ\s+ноль`))
-			Eventually(sess).Should(Exit(0))
-			Expect(err).NotTo(HaveOccurred())
+			Specify("that user can set an environment variable with non-ASCII and multibyte chars on that app", func() {
+				sess, err := cmd.Start("deis config:set FOO=讲台 BAR=Þorbjörnsson BAZ=ноль -a %s", &user, app.Name)
+				Eventually(sess).Should(Say("Creating config"))
+				Eventually(sess, settings.MaxEventuallyTimeout).Should(Say("=== %s Config", app.Name))
+				output := string(sess.Out.Contents())
+				Expect(output).To(MatchRegexp(`FOO\s+讲台`))
+				Expect(output).To(MatchRegexp(`BAR\s+Þorbjörnsson`))
+				Expect(output).To(MatchRegexp(`BAZ\s+ноль`))
+				Expect(err).NotTo(HaveOccurred())
+				Eventually(sess).Should(Exit(0))
 
-			sess, err = start("deis config:list -a %s", testData.Profile, testApp.Name)
-			Eventually(sess).Should(Say("=== %s Config", testApp.Name))
-			output = string(sess.Out.Contents())
-			Expect(output).To(MatchRegexp(`FOO\s+讲台`))
-			Expect(output).To(MatchRegexp(`BAR\s+Þorbjörnsson`))
-			Expect(output).To(MatchRegexp(`BAZ\s+ноль`))
-			Eventually(sess).Should(Exit(0))
-			Expect(err).NotTo(HaveOccurred())
+				sess, err = cmd.Start("deis config:list -a %s", &user, app.Name)
+				Eventually(sess).Should(Say("=== %s Config", app.Name))
+				output = string(sess.Out.Contents())
+				Expect(output).To(MatchRegexp(`FOO\s+讲台`))
+				Expect(output).To(MatchRegexp(`BAR\s+Þorbjörnsson`))
+				Expect(output).To(MatchRegexp(`BAZ\s+ноль`))
+				Expect(err).NotTo(HaveOccurred())
+				Eventually(sess).Should(Exit(0))
 
-			sess, err = start("deis run -a %s env", testData.Profile, testApp.Name)
-			Eventually(sess, defaultMaxTimeout).Should(Exit(0))
-			output = string(sess.Out.Contents())
-			Expect(output).To(ContainSubstring("FOO=讲台"))
-			Expect(output).To(ContainSubstring("BAR=Þorbjörnsson"))
-			Expect(output).To(ContainSubstring("BAZ=ноль"))
-			Eventually(sess).Should(Exit(0))
-			Expect(err).NotTo(HaveOccurred())
-		})
+				sess, err = cmd.Start("deis run -a %s env", &user, app.Name)
+				Eventually(sess, settings.MaxEventuallyTimeout).Should(Exit(0))
+				output = string(sess.Out.Contents())
+				Expect(output).To(ContainSubstring("FOO=讲台"))
+				Expect(output).To(ContainSubstring("BAR=Þorbjörnsson"))
+				Expect(output).To(ContainSubstring("BAZ=ноль"))
+				Expect(err).NotTo(HaveOccurred())
+				Eventually(sess).Should(Exit(0))
+			})
 
-		It("can unset an environment variable", func() {
-			sess, err := start("deis config:set -a %s FOO=xyzzy", testData.Profile, testApp.Name)
-			Eventually(sess).Should(Say("Creating config"))
-			Eventually(sess, defaultMaxTimeout).Should(Say("=== %s Config", testApp.Name))
-			Eventually(sess).Should(Say(`FOO\s+xyzzy`))
-			Eventually(sess).Should(Exit(0))
-			Expect(err).NotTo(HaveOccurred())
+			Context("and has already has an environment variable set", func() {
 
-			sess, err = start("deis config:list -a %s", testData.Profile, testApp.Name)
-			Eventually(sess).Should(Say("=== %s Config", testApp.Name))
-			Eventually(sess).Should(Say(`FOO\s+xyzzy`))
-			Eventually(sess).Should(Exit(0))
-			Expect(err).NotTo(HaveOccurred())
+				BeforeEach(func() {
+					sess, err := cmd.Start(`deis config:set -a %s FOO=xyzzy`, &user, app.Name)
+					Eventually(sess).Should(Say("Creating config"))
+					Eventually(sess, settings.MaxEventuallyTimeout).Should(Say("=== %s Config", app.Name))
+					Eventually(sess).Should(Say(`FOO\s+xyzzy`))
+					Expect(err).NotTo(HaveOccurred())
+					Eventually(sess).Should(Exit(0))
+				})
 
-			sess, err = start("deis config:unset -a %s FOO", testData.Profile, testApp.Name)
-			Eventually(sess).Should(Say("Removing config"))
-			Eventually(sess, defaultMaxTimeout).Should(Say("=== %s Config", testApp.Name))
-			Eventually(sess).Should(Exit(0))
-			Expect(err).NotTo(HaveOccurred())
-			Eventually(sess).ShouldNot(Say(`FOO\s+xyzzy`))
-			Eventually(sess).Should(Exit(0))
-			Expect(err).NotTo(HaveOccurred())
+				Specify("that user can unset that environment variable", func() {
+					sess, err := cmd.Start("deis config:unset -a %s FOO", &user, app.Name)
+					Eventually(sess).Should(Say("Removing config"))
+					Eventually(sess, settings.MaxEventuallyTimeout).Should(Say("=== %s Config", app.Name))
+					Eventually(sess).ShouldNot(Say(`FOO\s+xyzzy`))
+					Expect(err).NotTo(HaveOccurred())
+					Eventually(sess).Should(Exit(0))
 
-			sess, err = start("deis config:list -a %s", testData.Profile, testApp.Name)
-			Eventually(sess).Should(Say("=== %s Config", testApp.Name))
-			Eventually(sess).ShouldNot(Say(`FOO\s+xyzzy`))
-			Eventually(sess).Should(Exit(0))
-			Expect(err).NotTo(HaveOccurred())
+					sess, err = cmd.Start("deis config:list -a %s", &user, app.Name)
+					Eventually(sess).Should(Say("=== %s Config", app.Name))
+					Eventually(sess).ShouldNot(Say(`FOO\s+xyzzy`))
+					Expect(err).NotTo(HaveOccurred())
+					Eventually(sess).Should(Exit(0))
 
-			sess, err = start("deis run -a %s env", testData.Profile, testApp.Name)
-			Eventually(sess, defaultMaxTimeout).ShouldNot(Say("FOO=xyzzy"))
-			Eventually(sess).Should(Exit(0))
-			Expect(err).NotTo(HaveOccurred())
-		})
+					sess, err = cmd.Start("deis run -a %s env", &user, app.Name)
+					Eventually(sess, settings.MaxEventuallyTimeout).ShouldNot(Say("FOO=xyzzy"))
+					Expect(err).NotTo(HaveOccurred())
+					Eventually(sess).Should(Exit(0))
+				})
 
-		It("can pull the configuration to an .env file", func() {
-			sess, err := start("deis config:set -a %s BAZ=Freck", testData.Profile, testApp.Name)
-			Eventually(sess).Should(Say("Creating config"))
-			Eventually(sess, defaultMaxTimeout).Should(Say("=== %s Config", testApp.Name))
-			Eventually(sess).Should(Say(`BAZ\s+Freck`))
-			Eventually(sess).Should(Exit(0))
-			Expect(err).NotTo(HaveOccurred())
+				Specify("that user can pull the configuration to an .env file", func() {
+					sess, err := cmd.Start("deis config:pull -a %s", &user, app.Name)
+					// TODO: ginkgo seems to redirect deis' file output here, so just examine
+					// the output stream rather than reading in the .env file. Bug?
+					Eventually(sess, settings.MaxEventuallyTimeout).Should(Say("FOO=xyzzy"))
+					Expect(err).NotTo(HaveOccurred())
+					Eventually(sess).Should(Exit(0))
+				})
 
-			sess, err = start("deis config:pull -a %s", testData.Profile, testApp.Name)
-			// TODO: ginkgo seems to redirect deis' file output here, so just examine
-			// the output stream rather than reading in the .env file. Bug?
-			Eventually(sess, defaultMaxTimeout).Should(Say("BAZ=Freck"))
-			Eventually(sess).Should(Exit(0))
-			Expect(err).NotTo(HaveOccurred())
-		})
+			})
 
-		It("can push the configuration from an .env file", func() {
-			contents := []byte(`BIP=baz
+			Specify("that user can push configuration from an .env file", func() {
+				contents := []byte(`BIP=baz
 FOO=bar`)
-			err := ioutil.WriteFile(".env", contents, 0644)
-			Expect(err).NotTo(HaveOccurred())
+				err := ioutil.WriteFile(".env", contents, 0644)
 
-			sess, err := start("deis config:push -a %s", testData.Profile, testApp.Name)
-			Eventually(sess, defaultMaxTimeout).Should(Exit(0))
+				sess, err := cmd.Start("deis config:push -a %s", &user, app.Name)
+				Eventually(sess, settings.MaxEventuallyTimeout).Should(Exit(0))
+				Expect(err).NotTo(HaveOccurred())
+				Eventually(sess).Should(Exit(0))
 
-			sess, err = start("deis config:list -a %s", testData.Profile, testApp.Name)
-			Eventually(sess).Should(Say("=== %s Config", testApp.Name))
-			Eventually(sess).Should(Say(`BIP\s+baz`))
-			Eventually(sess).Should(Exit(0))
-			Expect(err).NotTo(HaveOccurred())
+				sess, err = cmd.Start("deis config:list -a %s", &user, app.Name)
+				Eventually(sess).Should(Say("=== %s Config", app.Name))
+				Eventually(sess).Should(Say(`BIP\s+baz`))
+				Expect(err).NotTo(HaveOccurred())
+				Eventually(sess).Should(Exit(0))
+			})
+
 		})
+
 	})
 
-	DescribeTable("can get command-line help for config", func(cmd, expected string) {
-		sess, err := start(cmd, "")
+	DescribeTable("any user can get command-line help for config", func(command string, expected string) {
+		sess, err := cmd.Start(command, nil)
 		Eventually(sess).Should(Say(expected))
-		Eventually(sess).Should(Exit(0))
 		Expect(err).NotTo(HaveOccurred())
+		Eventually(sess).Should(Exit(0))
 		// TODO: test that help output was more than five lines long
 	},
-
 		Entry("helps on \"help config\"",
 			"deis help config", "Valid commands for config:"),
 		Entry("helps on \"config -h\"",
@@ -292,4 +278,5 @@ FOO=bar`)
 		Entry("helps on \"config:push --help\"",
 			"deis config:push --help", "Sets environment variables for an application."),
 	)
+
 })
