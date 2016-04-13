@@ -9,7 +9,7 @@ sudo: required
 services:
 - docker
 install:
-- make bootstrap
+- make docker-bootstrap
 script:
 - make docker-build
 deploy:
