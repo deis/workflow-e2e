@@ -5,6 +5,7 @@ import (
 
 	"github.com/deis/workflow-e2e/tests/cmd"
 	"github.com/deis/workflow-e2e/tests/model"
+	"github.com/deis/workflow-e2e/tests/settings"
 
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gbytes"
@@ -30,6 +31,6 @@ func createOrPull(user model.User, app model.App, command string) {
 	sess, err := cmd.Start("deis %s --app=%s %s", &user, command, app.Name, ExampleImage)
 	Expect(err).NotTo(HaveOccurred())
 	Eventually(sess).Should(Say("Creating build..."))
-	Eventually(sess).Should(Exit(0))
+	Eventually(sess, settings.MaxEventuallyTimeout).Should(Exit(0))
 	time.Sleep(10 * time.Second)
 }
