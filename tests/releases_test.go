@@ -78,8 +78,8 @@ var _ = Describe("deis releases", func() {
 					Eventually(sess).Should(Say(`owner:\s+%s`, user.Username))
 					Eventually(sess).Should(Say(`summary:\s+%s \w+`, user.Username))
 
-					// The updated date has to match a string like 2015-12-22T21:20:31UTC:
-					Eventually(sess).Should(Say(`updated:\s+[\w\-\:]+UTC`))
+					// The updated date has to match a string like 2015-12-22T21:20:31Z:
+					Eventually(sess).Should(Say(`updated:\s+[\w\-\:]+Z`))
 					Eventually(sess).Should(Say(`uuid:\s+[0-9a-f\-]+`))
 					Expect(err).NotTo(HaveOccurred())
 					Eventually(sess).Should(Exit(0))
