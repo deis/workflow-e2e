@@ -1,3 +1,30 @@
+### v2.0.0-beta1 -> v2.0.0-beta2
+
+#### Features
+
+ - [`e914e7c`](https://github.com/deis/workflow-e2e/commit/e914e7cf4aca70bc6f0e09c056f39cf89243e247) dockerignore: add .dockerignore
+ - [`80281d0`](https://github.com/deis/workflow-e2e/commit/80281d0fb2ef90cadfe77b31b1d21fdede407436) apps: track created apps and delete their namespaces after all tests are done
+ - [`7f7d775`](https://github.com/deis/workflow-e2e/commit/7f7d77558a966fc5c4c763356e07598c298671b7) tests: reenable tests addressed by deis/controller #557
+ - [`33f133d`](https://github.com/deis/workflow-e2e/commit/33f133df5be7ab3ff34a76d71d14a8a4dbefee7d) dns: change xip to nip
+
+#### Fixes
+
+ - [`9139411`](https://github.com/deis/workflow-e2e/commit/9139411ec1cd427e52fab9e99c9906b5db322ee2) (all): Use max timeout waiting for build:create to exit
+ - [`606069e`](https://github.com/deis/workflow-e2e/commit/606069e70c5c681ff840567b437a0d322beba437) ps_test: remove ps:list check for 'restart "one"` type
+ - [`3c30f4e`](https://github.com/deis/workflow-e2e/commit/3c30f4e7b9f382e88b0944090fadb69a781b6bb3) ci: Dockerize bootstrap during Travis build
+ - [`97948fb`](https://github.com/deis/workflow-e2e/commit/97948fb2515c1e7c4eba8bea40c1e9f2627b5fd1) tags: regex for tags did not include - in names
+ - [`8f9ccbc`](https://github.com/deis/workflow-e2e/commit/8f9ccbcc9911502d6a5677cdf1061ca7be6dc81e) tests_suite_test.go: remove sleep
+ - [`9526090`](https://github.com/deis/workflow-e2e/commit/9526090f2bfa88c710af89657f13a24317710d7f) makefile: Needed to wrap TEST_OPTS and PARALLEL_TEST_OPTS in {}
+
+#### Documentation
+
+ - [`c56b6f6`](https://github.com/deis/workflow-e2e/commit/c56b6f6d49e6783dd4545a0ea2a6716e26c28a88) README: link to canonical Deis chart installation guide
+
+#### Maintenance
+
+ - [`f6efbc9`](https://github.com/deis/workflow-e2e/commit/f6efbc947e4c762549300bb2c89048304c3d5a7f) glide: update ginkgo dependencies
+ - [`0c02565`](https://github.com/deis/workflow-e2e/commit/0c0256523b3a8b27df67ce5d96786cfaafc08f88) jobs: remove workflow-e2e-pr.groovy DSL as it will be superceded by representation in charts repo
+
 ### v2.0.0-beta1
 
 #### Features
