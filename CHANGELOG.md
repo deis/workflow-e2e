@@ -1,3 +1,14 @@
+### v2.0.0-beta2 -> v2.0.0-beta3
+
+#### Features
+
+ - [`2e70125`](https://github.com/deis/workflow-e2e/commit/2e7012595f8fb3357158c1be25666d01177ff1df) registry: add tests for private registry functionality
+
+#### Fixes
+
+ - [`07740b4`](https://github.com/deis/workflow-e2e/commit/07740b427bee48b4b3f083a776c23d8a426a8ad7) ps: re-enable ps:restart one tests
+ - [`e3f1f0a`](https://github.com/deis/workflow-e2e/commit/e3f1f0a59adb40a288a89b729e59272010978d96) release: move from UTC to Z to comply with ISO8601
+
 ### v2.0.0-beta1 -> v2.0.0-beta2
 
 #### Features
