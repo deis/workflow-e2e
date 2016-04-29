@@ -6,6 +6,7 @@ import (
 	"github.com/deis/workflow-e2e/tests/cmd/auth"
 	"github.com/deis/workflow-e2e/tests/cmd/builds"
 	"github.com/deis/workflow-e2e/tests/model"
+	"github.com/deis/workflow-e2e/tests/settings"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -67,6 +68,28 @@ var _ = Describe("deis builds", func() {
 
 			Specify("that user can create a new build of that app from an existing image using `deis pull`", func() {
 				builds.Pull(user, app)
+			})
+
+			Specify("that user can create multiple builds of that app with DEPLOY_BATCHES set to 5", func() {
+				builds.Pull(user, app)
+
+				// scale to 11
+				sess, err := cmd.Start("deis ps:scale cmd=11 --app=%s", &user, app.Name)
+				Eventually(sess).Should(Say("Scaling processes... but first,"))
+				Eventually(sess, settings.MaxEventuallyTimeout).Should(Say(`done in \d+s`))
+				Eventually(sess).Should(Say("=== %s Processes", app.Name))
+				Expect(err).NotTo(HaveOccurred())
+				Eventually(sess).Should(Exit(0))
+
+				// configure 5 pods being rolled at once
+				sess, err = cmd.Start("deis config:set -a %s DEPLOY_BATCHES=5", &user, app.Name)
+				Expect(err).NotTo(HaveOccurred())
+				Eventually(sess).Should(Say("Creating config"))
+				Eventually(sess, settings.MaxEventuallyTimeout).Should(Say("=== %s Config", app.Name))
+				Eventually(sess).Should(Say(`DEPLOY_BATCHES\s+5`))
+				Expect(err).NotTo(HaveOccurred())
+				Eventually(sess).Should(Exit(0))
+
 			})
 
 		})
