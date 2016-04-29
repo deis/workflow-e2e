@@ -175,14 +175,11 @@ var _ = Describe("deis apps", func() {
 				Eventually(sess).Should(Exit(0))
 			})
 
-			// Pending: The logging subsystem is not currently installed as part of the workflow-dev
-			// chart.
-			XSpecify("that user can retrieve logs for that app", func() {
+			Specify("that user can retrieve logs for that app", func() {
 				sess, err := cmd.Start("deis logs -a %s", &user, app.Name)
 				Eventually(sess).Should(SatisfyAll(
-					Say("%s\\[deis-controller\\]\\: %s created initial release", app.Name, user.Username),
-					Say("%s\\[deis-controller\\]\\: %s deployed", app.Name, user.Username),
-					Say("%s\\[deis-controller\\]\\: %s scaled containers", app.Name, user.Username)))
+					Say("INFO \\[%s\\]: %s created initial release", app.Name, user.Username),
+					Say("INFO \\[%s\\]: domain %s added", app.Name, app.Name)))
 				Expect(err).NotTo(HaveOccurred())
 				Eventually(sess).Should(Exit(0))
 			})
