@@ -56,7 +56,7 @@ var _ = Describe("git push deis master", func() {
 					})
 
 					Specify("that user can deploy that app using a git push", func() {
-						git.Push(user, keyPath)
+						git.Push(user, keyPath, app)
 					})
 
 				})
