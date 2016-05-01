@@ -35,7 +35,7 @@ var _ = Describe("git push deis master", func() {
 				_, keyPath = keys.Add(user)
 			})
 
-			Context("and who has a local git repo containing source code", func() {
+			Context("and who has a local git repo containing buildpack source code", func() {
 
 				BeforeEach(func() {
 					output, err := cmd.Execute(`git clone https://github.com/deis/example-go.git`)
@@ -48,6 +48,34 @@ var _ = Describe("git push deis master", func() {
 
 					BeforeEach(func() {
 						os.Chdir("example-go")
+						app = apps.Create(user)
+					})
+
+					AfterEach(func() {
+						apps.Destroy(user, app)
+					})
+
+					Specify("that user can deploy that app using a git push", func() {
+						git.Push(user, keyPath, app)
+					})
+
+				})
+
+			})
+
+			Context("and who has a local git repo containing dockerfile source code", func() {
+
+				BeforeEach(func() {
+					output, err := cmd.Execute(`git clone https://github.com/deis/example-dockerfile-http.git`)
+					Expect(err).NotTo(HaveOccurred(), output)
+				})
+
+				Context("and has run `deis apps:create` from within that repo", func() {
+
+					var app model.App
+
+					BeforeEach(func() {
+						os.Chdir("example-dockerfile-http")
 						app = apps.Create(user)
 					})
 
