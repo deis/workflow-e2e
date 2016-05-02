@@ -13,7 +13,11 @@ else
 export GINKO_NODES_ARG=-p
 endif
 
-TEST_OPTS := -slowSpecThreshold=120.00 -noisyPendings=false ${GINKO_NODES_ARG}
+ifdef FOCUS_TEST
+FOCUS_OPTS := --focus="${FOCUS_TEST}"
+endif
+
+TEST_OPTS := -slowSpecThreshold=120.00 -noisyPendings=false ${GINKO_NODES_ARG} ${FOCUS_OPTS}
 
 DEIS_REGISTRY ?= quay.io/
 IMAGE_PREFIX ?= deis
@@ -31,6 +35,7 @@ DEV_CMD_ARGS := --rm -v ${CURDIR}:${SRC_PATH} -w ${SRC_PATH} ${DEV_IMG}
 DEV_CMD := docker run ${DEV_CMD_ARGS}
 DEV_CMD_INT := docker run -it ${DEV_CMD_ARGS}
 RUN_CMD := docker run --rm -e GINKGO_NODES=${GINKGO_NODES} \
+													 -e FOCUS_OPTS=${FOCUS_OPTS} \
 													 -e DEIS_CONTROLLER_URL=${DEIS_CONTROLLER_URL} \
 													 -e DEFAULT_EVENTUALLY_TIMEOUT=${DEFAULT_EVENTUALLY_TIMEOUT} \
 													 -e MAX_EVENTUALLY_TIMEOUT=${MAX_EVENTUALLY_TIMEOUT} \
