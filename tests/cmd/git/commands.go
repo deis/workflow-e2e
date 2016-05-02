@@ -17,7 +17,7 @@ import (
 // This allows each of these to be re-used easily in multiple contexts.
 
 // Push executes a `git push deis master` from the current directory using the provided key.
-func Push(user model.User, keyPath string, app model.App) {
+func Push(user model.User, keyPath string, app model.App, banner string) {
 	sess, err := cmd.Start("GIT_SSH=%s GIT_KEY=%s git push deis master", &user, settings.GitSSH, keyPath)
 	Expect(err).NotTo(HaveOccurred())
 	// sess.Wait(settings.MaxEventuallyTimeout)
@@ -31,5 +31,5 @@ func Push(user model.User, keyPath string, app model.App) {
 	Eventually(cmd.Retry(curlCmd, strconv.Itoa(http.StatusOK), cmdRetryTimeout)).Should(BeTrue())
 	// verify that the response contains "Powered by" as all the example apps do
 	curlCmd = model.Cmd{CommandLineString: fmt.Sprintf(`curl -sL "%s"`, app.URL)}
-	Eventually(cmd.Retry(curlCmd, "Powered by", cmdRetryTimeout)).Should(BeTrue())
+	Eventually(cmd.Retry(curlCmd, banner, cmdRetryTimeout)).Should(BeTrue())
 }
