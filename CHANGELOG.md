@@ -1,3 +1,22 @@
+### v2.0.0-beta3 -> v2.0.0-beta4
+
+#### Features
+
+ - [`d5282ce`](https://github.com/deis/workflow-e2e/commit/d5282cee73c105042696a08c2050ce82ccb1c643) git_push_test: curl app endpoint for "Powered by"
+
+#### Fixes
+
+ - [`3bd1db3`](https://github.com/deis/workflow-e2e/commit/3bd1db350025f2a3000349a6bba2b300703292b2) cli: update deis CLI to the latest version
+
+#### Documentation
+
+ - [`80a71ba`](https://github.com/deis/workflow-e2e/commit/80a71ba707b6a05c805dd90c49df737b7eab61bc) CHANGELOG.md: update for v2.0.0-beta3
+
+#### Maintenance
+
+ - [`aa0e2c4`](https://github.com/deis/workflow-e2e/commit/aa0e2c437cca8196781d113314f235bbd9558741) makefile: Add the ability to focus a test
+ - [`64207f8`](https://github.com/deis/workflow-e2e/commit/64207f891305d297e8cdb99b9ce7baa81918b53f) logs: Add deis logs test
+
 ### v2.0.0-beta2 -> v2.0.0-beta3
 
 #### Features
