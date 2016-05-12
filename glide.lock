@@ -1,8 +1,37 @@
-hash: 2cb2c8845b0614257fc1e08274974e33721dd5b0cda08087d07f9cc6d854e04c
-updated: 2016-03-14T12:16:43.865860022-06:00
+hash: 90757abeec8f1fb6e7577837b59fd942950218c2ceddfd3bed6537c3868b1224
+updated: 2016-05-12T10:33:10.961288054-06:00
 imports:
 - name: github.com/onsi/ginkgo
-  version: ac3d45ddd7ef5c4d7fc4d037b615a81f4d67981e
+  version: 2c2e9bb47b4e44067024f29339588cac8b34dd12
+  subpackages:
+  - config
+  - internal/codelocation
+  - internal/failer
+  - internal/remote
+  - internal/suite
+  - internal/testingtproxy
+  - internal/writer
+  - reporters
+  - reporters/stenographer
+  - types
+  - internal/containernode
+  - internal/leafnodes
+  - internal/spec
+  - internal/specrunner
 - name: github.com/onsi/gomega
   version: 7ce781ea776b2fd506491011353bded2e40c8467
+  subpackages:
+  - gbytes
+  - gexec
+  - internal/assertion
+  - internal/asyncassertion
+  - internal/testingtsupport
+  - matchers
+  - types
+  - format
+  - internal/oraclematcher
+  - matchers/support/goraph/bipartitegraph
+  - matchers/support/goraph/edge
+  - matchers/support/goraph/node
+  - matchers/support/goraph/util
 devImports: []
