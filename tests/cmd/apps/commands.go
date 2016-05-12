@@ -36,10 +36,12 @@ func Create(user model.User, options ...string) model.App {
 		}
 	}
 
-	if !noRemote {
+	if noRemote {
+		Eventually(sess).Should(Say("If you want to add a git remote for this app later, use "))
+	} else {
 		Eventually(sess).Should(Say("Git remote deis added"))
+		Eventually(sess).Should(Say("remote available at "))
 	}
-	Eventually(sess).Should(Say("remote available at "))
 	Eventually(sess).Should(Exit(0))
 	return app
 }
