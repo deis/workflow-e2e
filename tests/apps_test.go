@@ -3,13 +3,13 @@ package tests
 import (
 	"os"
 	"strings"
-	"time"
 
 	"github.com/deis/workflow-e2e/tests/cmd"
 	"github.com/deis/workflow-e2e/tests/cmd/apps"
 	"github.com/deis/workflow-e2e/tests/cmd/auth"
 	"github.com/deis/workflow-e2e/tests/cmd/builds"
 	"github.com/deis/workflow-e2e/tests/model"
+	"github.com/deis/workflow-e2e/tests/settings"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -190,7 +190,7 @@ var _ = Describe("deis apps", func() {
 
 			Specify("that user can run a command in that app's environment", func() {
 				sess, err := cmd.Start("deis apps:run --app=%s echo Hello, 世界", &user, app.Name)
-				Eventually(sess, (1 * time.Minute)).Should(Say("Hello, 世界"))
+				Eventually(sess, settings.MaxEventuallyTimeout).Should(Say("Hello, 世界"))
 				Expect(err).NotTo(HaveOccurred())
 				Eventually(sess).Should(Exit(0))
 			})
