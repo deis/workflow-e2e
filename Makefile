@@ -17,7 +17,13 @@ ifdef FOCUS_TEST
 FOCUS_OPTS := --focus="${FOCUS_TEST}"
 endif
 
-TEST_OPTS := -slowSpecThreshold=120.00 -noisyPendings=false ${GINKO_NODES_ARG} ${FOCUS_OPTS}
+ifdef SKIP_TEST
+SKIP_OPTS := --skip="${SKIP_TEST}"
+else  # Skip the lengthy "all buildpacks" and "all dockerfiles" specs by default
+SKIP_OPTS := --skip="all (buildpack|dockerfile) apps"
+endif
+
+TEST_OPTS := -slowSpecThreshold=120.00 -noisyPendings=false ${GINKO_NODES_ARG} ${SKIP_OPTS} ${FOCUS_OPTS}
 
 DEIS_REGISTRY ?= quay.io/
 IMAGE_PREFIX ?= deis
@@ -35,14 +41,15 @@ DEV_CMD_ARGS := --rm -v ${CURDIR}:${SRC_PATH} -w ${SRC_PATH} ${DEV_IMG}
 DEV_CMD := docker run ${DEV_CMD_ARGS}
 DEV_CMD_INT := docker run -it ${DEV_CMD_ARGS}
 RUN_CMD := docker run --rm -e GINKGO_NODES=${GINKGO_NODES} \
-													 -e FOCUS_OPTS=${FOCUS_OPTS} \
-													 -e DEIS_CONTROLLER_URL=${DEIS_CONTROLLER_URL} \
-													 -e DEFAULT_EVENTUALLY_TIMEOUT=${DEFAULT_EVENTUALLY_TIMEOUT} \
-													 -e MAX_EVENTUALLY_TIMEOUT=${MAX_EVENTUALLY_TIMEOUT} \
-													 -e JUNIT=${JUNIT} \
-													 -e DEBUG=${DEBUG} \
-													 -v ${HOME}/.kube:/root/.kube \
-													 -w ${SRC_PATH} ${IMAGE}
+	-e SKIP_OPTS=${SKIP_OPTS} \
+	-e FOCUS_OPTS=${FOCUS_OPTS} \
+	-e DEIS_CONTROLLER_URL=${DEIS_CONTROLLER_URL} \
+	-e DEFAULT_EVENTUALLY_TIMEOUT=${DEFAULT_EVENTUALLY_TIMEOUT} \
+	-e MAX_EVENTUALLY_TIMEOUT=${MAX_EVENTUALLY_TIMEOUT} \
+	-e JUNIT=${JUNIT} \
+	-e DEBUG=${DEBUG} \
+	-v ${HOME}/.kube:/root/.kube \
+	-w ${SRC_PATH} ${IMAGE}
 
 check-controller-url:
 	@if [ -z "$$DEIS_CONTROLLER_URL" ]; then \
