@@ -1,3 +1,18 @@
+### v2.0.0-beta4 -> v2.0.0-rc1
+
+#### Features
+
+ - [`55ac717`](https://github.com/deis/workflow-e2e/commit/55ac7175fbe07fb332f59c0b8341e2f32269ae3c) deploy: test that setting DEPLOY_BATCHES on an app works
+
+#### Fixes
+
+ - [`c4cadb9`](https://github.com/deis/workflow-e2e/commit/c4cadb9faefb54be58cb09db2e5a655e99ae53c8) apps: extend the time deis run is allowed to run
+
+#### Maintenance
+
+ - [`1fb8b23`](https://github.com/deis/workflow-e2e/commit/1fb8b23a873039a808fd0695b3cc2f518770d10c) apps:create: Assert on new/improved CLI output
+ - [`3e27592`](https://github.com/deis/workflow-e2e/commit/3e2759242e7959b2b8263e7d5c7d1821bf365579) glide.lock: update go deps and go-dev image
+
 ### v2.0.0-beta3 -> v2.0.0-beta4
 
 #### Features
