@@ -190,9 +190,41 @@ var _ = Describe("deis apps", func() {
 
 			Specify("that user can run a command in that app's environment", func() {
 				sess, err := cmd.Start("deis apps:run --app=%s echo Hello, 世界", &user, app.Name)
-				Eventually(sess, settings.MaxEventuallyTimeout).Should(Say("Hello, 世界"))
 				Expect(err).NotTo(HaveOccurred())
+				Eventually(sess, (settings.MaxEventuallyTimeout)).Should(Say("Hello, 世界"))
 				Eventually(sess).Should(Exit(0))
+			})
+
+			Specify("that user can run a command with dashes in that app's environment", func() {
+				sess, err := cmd.Start("deis apps:run --app=%s -- ls -alh", &user, app.Name)
+				Expect(err).NotTo(HaveOccurred())
+				// Can't assume too much about arbitrary "ls" output
+				Eventually(sess, (settings.MaxEventuallyTimeout)).Should(Say("total "))
+				Eventually(sess, (settings.MaxEventuallyTimeout)).Should(Say(" .."))
+				Eventually(sess).Should(Exit(0))
+			})
+
+			Specify("that user can run a command with quotes in that app's environment", func() {
+				sess, err := cmd.Start("deis apps:run --app=%s echo \"Hello, ''\"", &user, app.Name)
+				Expect(err).NotTo(HaveOccurred())
+				Eventually(sess, (settings.MaxEventuallyTimeout)).Should(Say("Hello, ''"))
+				Eventually(sess).Should(Exit(0))
+			})
+
+			Specify("that user can run a command with lengthy output in that app's environment", func() {
+				sess, err := cmd.Start("deis apps:run --app=%s dd if=/dev/urandom bs=3072 count=1000", &user, app.Name)
+				Expect(err).NotTo(HaveOccurred())
+				Eventually(sess, (settings.MaxEventuallyTimeout)).Should(Exit(0))
+				Expect(len(sess.Out.Contents())).To(BeNumerically(">=", 3072000))
+			})
+
+			Specify("that user can't run a bogus command in that app's environment", func() {
+				sess, err := cmd.Start("deis apps:run --app=%s /usr/bin/boguscmd", &user, app.Name)
+				Expect(err).NotTo(HaveOccurred())
+				// TODO: should this have gone to stderr instead?
+				// Eventually(sess.Err, (settings.MaxEventuallyTimeout)).Should(Say("No such file or directory"))
+				Eventually(sess, (settings.MaxEventuallyTimeout)).Should(Say("No such file or directory"))
+				Eventually(sess).ShouldNot(Exit(0))
 			})
 
 		})
