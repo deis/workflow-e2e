@@ -12,7 +12,7 @@ RUN apk add --update-cache \
 	&& go get -u -v \
 	github.com/tools/godep \
 	github.com/onsi/ginkgo/ginkgo \
-	&& curl -L https://dl.bintray.com/deis/deisci/deis-aaf5e78-linux-amd64 -o /usr/local/bin/deis \
+	&& curl -L https://dl.bintray.com/deis/deisci/deis-7283e7c-linux-amd64 -o /usr/local/bin/deis \
 	&& chmod +x /usr/local/bin/deis \
 	&& mkdir -p $GOPATH/src/k8s.io \
 	&& curl -L https://github.com/kubernetes/kubernetes/archive/v$K8S_VERSION.tar.gz | tar xvz -C $GOPATH/src/k8s.io \
@@ -22,7 +22,7 @@ RUN apk add --update-cache \
 	&& cd ~ \
 	&& rm -rf $GOPATH/src/k8s.io/kubernetes \
 	&& curl -L https://github.com/Masterminds/glide/releases/download/$GLIDE_VERSION/glide-$GLIDE_VERSION-linux-amd64.tar.gz | tar xvz -C /tmp \
-	&& mv /tmp/linux-amd64/glide /usr/local/bin \ 
+	&& mv /tmp/linux-amd64/glide /usr/local/bin \
 	&& rm -rf /tmp/linux-amd64
 
 COPY . /go/src/github.com/deis/workflow-e2e
