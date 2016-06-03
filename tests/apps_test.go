@@ -204,11 +204,10 @@ var _ = Describe("deis apps", func() {
 				Eventually(sess).Should(Exit(0))
 			})
 
-			// FIXME: why is Workflow failing this test?
-			PSpecify("that user can run a command with quotes in that app's environment", func() {
-				sess, err := cmd.Start("deis apps:run --app=%s echo \"Hello, ''\"", &user, app.Name)
+			Specify("that user can run a command with quotes in that app's environment", func() {
+				sess, err := cmd.Start("deis apps:run --app=%s echo 'Hello, \\\"高座\\\"'", &user, app.Name)
 				Expect(err).NotTo(HaveOccurred())
-				Eventually(sess, (settings.MaxEventuallyTimeout)).Should(Say("Hello, ''"))
+				Eventually(sess, (settings.MaxEventuallyTimeout)).Should(Say("Hello, \"高座\""))
 				Eventually(sess).Should(Exit(0))
 			})
 
