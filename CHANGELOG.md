@@ -1,3 +1,13 @@
+### v2.0.0-rc1 -> v2.0.0-rc2
+
+#### Fixes
+
+- [`796be32`](https://github.com/deis/workflow-e2e/commit/796be32ccbc0dc9caca7de4053aaccc58149af7b) apps_test: mark problematic spec as pending
+
+#### Maintenance
+
+- [`c013f15`](https://github.com/deis/workflow-e2e/commit/c013f153a8d757938e11fe91c9a62be0e1e7afc4) Dockerfile: update Workflow CLI to latest published
+
 ### v2.0.0-beta4 -> v2.0.0-rc1
 
 #### Features
