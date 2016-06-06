@@ -12,7 +12,7 @@ RUN apk add --update-cache \
 	&& go get -u -v \
 	github.com/tools/godep \
 	github.com/onsi/ginkgo/ginkgo \
-	&& curl -L https://dl.bintray.com/deis/deisci/deis-7283e7c-linux-amd64 -o /usr/local/bin/deis \
+	&& curl -L https://dl.bintray.com/deis/deisci/deis-a17f89a-linux-amd64 -o /usr/local/bin/deis \
 	&& chmod +x /usr/local/bin/deis \
 	&& mkdir -p $GOPATH/src/k8s.io \
 	&& curl -L https://github.com/kubernetes/kubernetes/archive/v$K8S_VERSION.tar.gz | tar xvz -C $GOPATH/src/k8s.io \
