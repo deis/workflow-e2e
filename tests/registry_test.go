@@ -59,7 +59,16 @@ var _ = Describe("deis registry", func() {
 			})
 
 			Specify("that user can set a valid registry information", func() {
-				sess, err := cmd.Start("deis registry:set --app=%s username=bob", &user, app.Name)
+				// Setting a port first is required for a private registry
+				sess, err := cmd.Start("deis config:set -a %s PORT=5000", &user, app.Name)
+				Expect(err).NotTo(HaveOccurred())
+				Eventually(sess).Should(Say("Creating config"))
+				Eventually(sess, settings.MaxEventuallyTimeout).Should(Say("=== %s Config", app.Name))
+				Eventually(sess).Should(Say(`PORT\s+5000`))
+				Expect(err).NotTo(HaveOccurred())
+				Eventually(sess).Should(Exit(0))
+
+				sess, err = cmd.Start("deis registry:set --app=%s username=bob", &user, app.Name)
 				Eventually(sess, settings.MaxEventuallyTimeout).Should(Say("=== %s Registry", app.Name))
 				Eventually(sess).Should(Say(`username\s+bob`))
 				Expect(err).NotTo(HaveOccurred())
@@ -82,17 +91,8 @@ var _ = Describe("deis registry", func() {
 				time.Sleep(10 * time.Second)
 			})
 
-			Specify("that user can deploy from a private registry using registry credentials without a port", func() {
-				// read-only access
-				registry_creds := "TP5BS3NHW0OZ20GER4IORTIJF90J48KKJ8NX8YC7Z22N5P7WE27BRKVMQ4QAEID8"
-				sess, err := cmd.Start("deis registry:set --app=%s username=deisci+e2e_registry password=%s", &user, app.Name, registry_creds)
-				Eventually(sess, settings.MaxEventuallyTimeout).Should(Say("PORT needs to be set in the config when using a private registry"))
-				Expect(err).NotTo(HaveOccurred())
-				Eventually(sess).Should(Exit(1))
-			})
-
 			Specify("that user can deploy from a private registry using registry credentials", func() {
-				// Setting a port first is required
+				// Setting a port first is required for a private registry
 				sess, err := cmd.Start("deis config:set -a %s PORT=5000", &user, app.Name)
 				Expect(err).NotTo(HaveOccurred())
 				Eventually(sess).Should(Say("Creating config"))
@@ -120,7 +120,16 @@ var _ = Describe("deis registry", func() {
 			Context("and registry information has already been added to the app", func() {
 
 				BeforeEach(func() {
-					sess, err := cmd.Start("deis registry:set --app=%s username=bob", &user, app.Name)
+					// Setting a port first is required
+					sess, err := cmd.Start("deis config:set -a %s PORT=5000", &user, app.Name)
+					Expect(err).NotTo(HaveOccurred())
+					Eventually(sess).Should(Say("Creating config"))
+					Eventually(sess, settings.MaxEventuallyTimeout).Should(Say("=== %s Config", app.Name))
+					Eventually(sess).Should(Say(`PORT\s+5000`))
+					Expect(err).NotTo(HaveOccurred())
+					Eventually(sess).Should(Exit(0))
+
+					sess, err = cmd.Start("deis registry:set --app=%s username=bob", &user, app.Name)
 					Eventually(sess, settings.MaxEventuallyTimeout).Should(Say("=== %s Registry", app.Name))
 					Eventually(sess).Should(Say(`username\s+bob`))
 					Expect(err).NotTo(HaveOccurred())
