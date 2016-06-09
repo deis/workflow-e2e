@@ -1,3 +1,14 @@
+### v2.0.0-rc2 -> v2.0.0
+
+#### Documentation
+
+- [`0393a7a`](https://github.com/deis/workflow-e2e/commit/0393a7af5760d1e62fb14be0eb55e0ce2450ea32) README.md: remove beta status
+- [`9214eee`](https://github.com/deis/workflow-e2e/commit/9214eeeb1434c0d5e30a656cb1ca86a21f06828e) CHANGELOG.md: add entry for v2.0.0-rc2
+
+#### Maintenance
+
+- [`382cba2`](https://github.com/deis/workflow-e2e/commit/382cba2c9b7409dde474535ab1f3260bd9bd757e) Dockerfile: update deis CLI to a17f89a
+
 ### v2.0.0-rc1 -> v2.0.0-rc2
 
 #### Fixes
