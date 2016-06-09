@@ -94,7 +94,7 @@ var _ = Describe("deis registry", func() {
 
 				// read-only access
 				registry_creds := "TP5BS3NHW0OZ20GER4IORTIJF90J48KKJ8NX8YC7Z22N5P7WE27BRKVMQ4QAEID8"
-				sess, err := cmd.Start("deis registry:set --app=%s username=deisci+e2e_registry password=%s", &user, app.Name, registry_creds)
+				sess, err = cmd.Start("deis registry:set --app=%s username=deisci+e2e_registry password=%s", &user, app.Name, registry_creds)
 				Eventually(sess, settings.MaxEventuallyTimeout).Should(Say("=== %s Registry", app.Name))
 				Expect(err).NotTo(HaveOccurred())
 				Eventually(sess).Should(Exit(0))
