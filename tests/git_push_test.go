@@ -59,6 +59,17 @@ var _ = Describe("git push deis master", func() {
 						git.Push(user, keyPath, app, "Powered by Deis")
 					})
 
+					Specify("that user can interrupt the deploy of the app and recover", func() {
+						git.PushWithInterrupt(user, keyPath)
+
+						git.PushUntilResult(user, keyPath,
+							model.CmdResult{
+								Out:      nil,
+								Err:      []byte("Everything up-to-date"),
+								ExitCode: 0,
+							})
+					})
+
 				})
 
 			})
