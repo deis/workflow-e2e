@@ -1,7 +1,7 @@
 # Deis Workflow End to End Tests v2
 
 [![Build Status](https://travis-ci.org/deis/workflow-e2e.svg?branch=master)](https://travis-ci.org/deis/workflow-e2e)
-[![Go Report Card](http://goreportcard.com/badge/deis/workflow-e2e)](http://goreportcard.com/report/deis/workflow-e2e)
+[![Go Report Card](https://goreportcard.com/badge/github.com/deis/workflow-e2e)](https://goreportcard.com/report/github.com/deis/workflow-e2e)
 [![Docker Repository on Quay](https://quay.io/repository/deisci/deis-e2e/status "Docker Repository on Quay")](https://quay.io/repository/deisci/deis-e2e)
 
 Deis (pronounced DAY-iss) Workflow is an open source Platform as a Service (PaaS) that adds a developer-friendly layer to any [Kubernetes](http://kubernetes.io) cluster, making it easy to deploy and manage applications on your own servers.
