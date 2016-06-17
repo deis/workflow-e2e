@@ -7,6 +7,8 @@ SRC_PATH := /go/src/github.com/deis/workflow-e2e
 MUTABLE_VERSION ?= canary
 VERSION ?= git-$(shell git rev-parse --short HEAD)
 
+CLI_VERSION ?= latest
+
 ifdef GINKGO_NODES
 export GINKO_NODES_ARG=-nodes=${GINKGO_NODES}
 else
@@ -48,6 +50,7 @@ RUN_CMD := docker run --rm -e GINKGO_NODES=${GINKGO_NODES} \
 	-e MAX_EVENTUALLY_TIMEOUT=${MAX_EVENTUALLY_TIMEOUT} \
 	-e JUNIT=${JUNIT} \
 	-e DEBUG=${DEBUG} \
+	-e CLI_VERSION=${CLI_VERSION} \
 	-v ${HOME}/.kube:/root/.kube \
 	-w ${SRC_PATH} ${IMAGE}
 
@@ -85,7 +88,7 @@ docker-mutable-push:
 
 # run tests in parallel inside of a container
 docker-test-integration:
-	${RUN_CMD} make test-integration
+	${RUN_CMD} ./docker-test-integration.sh
 
 .PHONY: check-controller-url \
 				dev-env \

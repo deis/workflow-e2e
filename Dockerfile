@@ -12,8 +12,6 @@ RUN apk add --update-cache \
 	&& go get -u -v \
 	github.com/tools/godep \
 	github.com/onsi/ginkgo/ginkgo \
-	&& curl https://storage.googleapis.com/workflow-cli/08a0e40/deis-08a0e40-linux-amd64 -o /usr/local/bin/deis \
-	&& chmod +x /usr/local/bin/deis \
 	&& mkdir -p $GOPATH/src/k8s.io \
 	&& curl -L https://github.com/kubernetes/kubernetes/archive/v$K8S_VERSION.tar.gz | tar xvz -C $GOPATH/src/k8s.io \
 	&& mv $GOPATH/src/k8s.io/kubernetes-$K8S_VERSION $GOPATH/src/k8s.io/kubernetes \
@@ -31,4 +29,4 @@ WORKDIR /go/src/github.com/deis/workflow-e2e
 
 RUN glide install
 
-CMD ["/usr/bin/make", "test-integration"]
+CMD ["./docker-test-integration.sh"]
