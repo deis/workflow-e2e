@@ -221,9 +221,7 @@ var _ = Describe("deis apps", func() {
 			Specify("that user can't run a bogus command in that app's environment", func() {
 				sess, err := cmd.Start("deis apps:run --app=%s /usr/bin/boguscmd", &user, app.Name)
 				Expect(err).NotTo(HaveOccurred())
-				// TODO: should this have gone to stderr instead?
-				// Eventually(sess.Err, (settings.MaxEventuallyTimeout)).Should(Say("No such file or directory"))
-				Eventually(sess, (settings.MaxEventuallyTimeout)).Should(Say("No such file or directory"))
+				Eventually(sess.Err, (settings.MaxEventuallyTimeout)).Should(Say("No such file or directory"))
 				Eventually(sess).ShouldNot(Exit(0))
 			})
 
