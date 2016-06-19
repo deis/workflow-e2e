@@ -63,11 +63,9 @@ var _ = Describe("deis tags", func() {
 
 			Specify("that user cannot unset an invalid tag", func() {
 				sess, err := cmd.Start("deis tags:unset --app=%s munkafolyamat", &user, app.Name)
-				// TODO: should unsetting a bogus tag return 0 (success?)
-				Eventually(sess, settings.MaxEventuallyTimeout).Should(Say("=== %s Tags", app.Name))
 				Eventually(sess).ShouldNot(Say(`munkafolyamat\s+yeah`, app.Name))
 				Expect(err).NotTo(HaveOccurred())
-				Eventually(sess).Should(Exit(0))
+				Eventually(sess).Should(Exit(1))
 			})
 
 			Specify("that user can set a valid tag", func() {
