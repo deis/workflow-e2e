@@ -76,7 +76,7 @@ test-integration: check-controller-url
 
 docker-build:
 	docker build -t ${IMAGE} ${CURDIR}
-	docker tag -f ${IMAGE} ${MUTABLE_IMAGE}
+	docker tag ${IMAGE} ${MUTABLE_IMAGE}
 
 docker-push: docker-immutable-push docker-mutable-push
 
