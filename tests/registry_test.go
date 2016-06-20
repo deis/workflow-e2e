@@ -51,11 +51,9 @@ var _ = Describe("deis registry", func() {
 
 			Specify("that user cannot unset an invalid registry information", func() {
 				sess, err := cmd.Start("deis registry:unset --app=%s munkafolyamat", &user, app.Name)
-				// TODO: should unsetting a bogus registry info return 0 (success?)
-				Eventually(sess, settings.MaxEventuallyTimeout).Should(Say("=== %s Registry", app.Name))
 				Eventually(sess).ShouldNot(Say(`munkafolyamat\s+yeah`, app.Name))
 				Expect(err).NotTo(HaveOccurred())
-				Eventually(sess).Should(Exit(0))
+				Eventually(sess).Should(Exit(1))
 			})
 
 			Specify("that user can set a valid registry information", func() {

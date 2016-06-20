@@ -74,10 +74,10 @@ var _ = Describe("deis limits", func() {
 			})
 
 			Specify("that user can unset a memory limit on that application", func() {
+				// no memory has been set
 				sess, err := cmd.Start("deis limits:unset cmd -a %s", &user, app.Name)
-				Eventually(sess, settings.MaxEventuallyTimeout).Should(Say("--- Memory\nUnlimited"))
 				Expect(err).NotTo(HaveOccurred())
-				Eventually(sess).Should(Exit(0))
+				Eventually(sess).Should(Exit(1))
 
 				// Check that --memory also works
 				sess, err = cmd.Start("deis limits:set --memory cmd=64M -a %s", &user, app.Name)
@@ -91,10 +91,10 @@ var _ = Describe("deis limits", func() {
 			})
 
 			Specify("that user can unset a CPU limit on that application", func() {
+				// no cpu has been set
 				sess, err := cmd.Start("deis limits:unset --cpu cmd -a %s", &user, app.Name)
-				Eventually(sess, settings.MaxEventuallyTimeout).Should(Say("--- CPU\nUnlimited"))
 				Expect(err).NotTo(HaveOccurred())
-				Eventually(sess).Should(Exit(0))
+				Eventually(sess).Should(Exit(1))
 			})
 
 		})
