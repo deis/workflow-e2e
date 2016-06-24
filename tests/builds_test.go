@@ -1,12 +1,14 @@
 package tests
 
 import (
+	deis "github.com/deis/controller-sdk-go"
 	"github.com/deis/workflow-e2e/tests/cmd"
 	"github.com/deis/workflow-e2e/tests/cmd/apps"
 	"github.com/deis/workflow-e2e/tests/cmd/auth"
 	"github.com/deis/workflow-e2e/tests/cmd/builds"
 	"github.com/deis/workflow-e2e/tests/model"
 	"github.com/deis/workflow-e2e/tests/settings"
+	"github.com/deis/workflow-e2e/tests/util"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -36,7 +38,7 @@ var _ = Describe("deis builds", func() {
 
 			Specify("that user cannot create a build for that app", func() {
 				sess, err := cmd.Start("deis builds:create -a %s %s", &user, bogusAppName, builds.ExampleImage)
-				Eventually(sess.Err).Should(Say("404 Not Found"))
+				Eventually(sess.Err).Should(Say(util.PrependError(deis.ErrNotFound)))
 				Expect(err).NotTo(HaveOccurred())
 				Eventually(sess).Should(Exit(1))
 			})

@@ -1,12 +1,14 @@
 package tests
 
 import (
+	deis "github.com/deis/controller-sdk-go"
 	"github.com/deis/workflow-e2e/tests/cmd"
 	"github.com/deis/workflow-e2e/tests/cmd/apps"
 	"github.com/deis/workflow-e2e/tests/cmd/auth"
 	"github.com/deis/workflow-e2e/tests/cmd/perms"
 	"github.com/deis/workflow-e2e/tests/model"
 	"github.com/deis/workflow-e2e/tests/settings"
+	"github.com/deis/workflow-e2e/tests/util"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -174,7 +176,7 @@ var _ = Describe("deis perms", func() {
 
 		Specify("that user cannot list admin permissions", func() {
 			sess, err := cmd.Start("deis perms:list --admin", &user)
-			Eventually(sess.Err).Should(Say("403 Forbidden"))
+			Eventually(sess.Err).Should(Say(util.PrependError(deis.ErrForbidden)))
 			Expect(err).NotTo(HaveOccurred())
 			Eventually(sess).Should(Exit(1))
 		})
@@ -182,7 +184,7 @@ var _ = Describe("deis perms", func() {
 		Specify("that user cannot create admin permissions", func() {
 			sess, err := cmd.Start("deis perms:create %s --admin", &user, user.Username)
 			Eventually(sess, settings.MaxEventuallyTimeout).Should(Say("Adding %s to system administrators...", user.Username))
-			Eventually(sess.Err).Should(Say("403 Forbidden"))
+			Eventually(sess.Err).Should(Say(util.PrependError(deis.ErrForbidden)))
 			Expect(err).NotTo(HaveOccurred())
 			Eventually(sess).Should(Exit(1))
 		})
@@ -193,7 +195,7 @@ var _ = Describe("deis perms", func() {
 
 			Specify("the non-admin user cannot delete the admin's admin permissions", func() {
 				sess, err := cmd.Start("deis perms:delete %s --admin", &user, admin.Username)
-				Eventually(sess.Err, settings.MaxEventuallyTimeout).Should(Say("403 Forbidden"))
+				Eventually(sess.Err, settings.MaxEventuallyTimeout).Should(Say(util.PrependError(deis.ErrForbidden)))
 				Expect(err).NotTo(HaveOccurred())
 				Eventually(sess).Should(Exit(1))
 			})

@@ -4,12 +4,14 @@ import (
 	"regexp"
 	"strings"
 
+	deis "github.com/deis/controller-sdk-go"
 	"github.com/deis/workflow-e2e/tests/cmd"
 	"github.com/deis/workflow-e2e/tests/cmd/apps"
 	"github.com/deis/workflow-e2e/tests/cmd/auth"
 	"github.com/deis/workflow-e2e/tests/cmd/builds"
 	"github.com/deis/workflow-e2e/tests/model"
 	"github.com/deis/workflow-e2e/tests/settings"
+	"github.com/deis/workflow-e2e/tests/util"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo/extensions/table"
@@ -56,7 +58,7 @@ var _ = Describe("deis tags", func() {
 				sess, err := cmd.Start("deis tags:set --app=%s munkafolyamat=yeah", &user, app.Name)
 				Eventually(sess, settings.MaxEventuallyTimeout).ShouldNot(Say("=== %s Tags", app.Name))
 				Eventually(sess).ShouldNot(Say(`munkafolyamat\s+yeah`, app.Name))
-				Eventually(sess.Err).Should(Say("400 Bad Request"))
+				Eventually(sess.Err).Should(Say(util.PrependError(deis.ErrTagNotFound)))
 				Expect(err).NotTo(HaveOccurred())
 				Eventually(sess).Should(Exit(1))
 			})

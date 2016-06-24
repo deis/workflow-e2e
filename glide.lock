@@ -1,6 +1,18 @@
-hash: 90757abeec8f1fb6e7577837b59fd942950218c2ceddfd3bed6537c3868b1224
-updated: 2016-06-09T08:54:37.256338287-07:00
+hash: 3e43564ccccf3c46aa70fb8028d93ce53e90cfc9db09d979d5c46ddf0734d09e
+updated: 2016-06-24T13:03:49.725476916-07:00
 imports:
+- name: github.com/deis/controller-sdk-go
+  version: eb17597ec8bed052cbc2cc3dc55ae896219b09f7
+  subpackages:
+  - pkg/time
+- name: github.com/golang/protobuf
+  version: 0c1f6d65b5a189c2250d10e71a5506f06f9fa0a0
+  subpackages:
+  - proto
+  - proto/testdata
+  - ptypes/any
+- name: github.com/goware/urlx
+  version: 86bdc24560383254e8b977da31a823eddf904409
 - name: github.com/onsi/ginkgo
   version: 2c2e9bb47b4e44067024f29339588cac8b34dd12
   subpackages:
@@ -14,10 +26,13 @@ imports:
   - reporters
   - reporters/stenographer
   - types
-  - internal/containernode
+  - ginkgo/convert
+  - ginkgo/interrupthandler
+  - ginkgo/nodot
+  - ginkgo/testrunner
+  - ginkgo/testsuite
+  - ginkgo/watch
   - internal/leafnodes
-  - internal/spec
-  - internal/specrunner
 - name: github.com/onsi/gomega
   version: 7ce781ea776b2fd506491011353bded2e40c8467
   subpackages:
@@ -28,10 +43,17 @@ imports:
   - internal/testingtsupport
   - matchers
   - types
-  - format
   - internal/oraclematcher
   - matchers/support/goraph/bipartitegraph
   - matchers/support/goraph/edge
   - matchers/support/goraph/node
   - matchers/support/goraph/util
+- name: github.com/PuerkitoBio/purell
+  version: 1d5d1cfad45d42ec5f81fa8ef23de09cebc6dcc3
+- name: github.com/PuerkitoBio/urlesc
+  version: 5fa9ff0392746aeae1c4b37fcc42c65afa7a9587
+- name: golang.org/x/net
+  version: bc3663df0ac92f928d419e31e0d2af22e683a5a2
+  subpackages:
+  - idna
 devImports: []

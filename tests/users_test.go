@@ -1,10 +1,12 @@
 package tests
 
 import (
+	deis "github.com/deis/controller-sdk-go"
 	"github.com/deis/workflow-e2e/tests/cmd"
 	"github.com/deis/workflow-e2e/tests/cmd/auth"
 	"github.com/deis/workflow-e2e/tests/model"
 	"github.com/deis/workflow-e2e/tests/settings"
+	"github.com/deis/workflow-e2e/tests/util"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -43,7 +45,7 @@ var _ = Describe("deis users", func() {
 
 		Specify("that user cannot list all users", func() {
 			sess, err := cmd.Start("deis users:list", &user)
-			Eventually(sess.Err, settings.MaxEventuallyTimeout).Should(Say("403 Forbidden"))
+			Eventually(sess.Err, settings.MaxEventuallyTimeout).Should(Say(util.PrependError(deis.ErrForbidden)))
 			Expect(err).NotTo(HaveOccurred())
 			Eventually(sess).Should(Exit(1))
 		})

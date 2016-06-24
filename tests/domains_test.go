@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strconv"
 
+	deis "github.com/deis/controller-sdk-go"
 	"github.com/deis/workflow-e2e/tests/cmd"
 	"github.com/deis/workflow-e2e/tests/cmd/apps"
 	"github.com/deis/workflow-e2e/tests/cmd/auth"
@@ -13,6 +14,7 @@ import (
 	"github.com/deis/workflow-e2e/tests/cmd/domains"
 	"github.com/deis/workflow-e2e/tests/model"
 	"github.com/deis/workflow-e2e/tests/settings"
+	"github.com/deis/workflow-e2e/tests/util"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -65,7 +67,7 @@ var _ = Describe("deis domains", func() {
 
 			Specify("that user cannot remove a non-existent domain from that app", func() {
 				sess, err := cmd.Start("deis domains:remove --app=%s %s", &user, app.Name, "non.existent.domain")
-				Eventually(sess.Err, settings.MaxEventuallyTimeout).Should(Say("404 Not Found"))
+				Eventually(sess.Err, settings.MaxEventuallyTimeout).Should(Say(util.PrependError(deis.ErrNotFound)))
 				Expect(err).NotTo(HaveOccurred())
 				Eventually(sess).Should(Exit(1))
 			})

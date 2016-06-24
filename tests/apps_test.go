@@ -4,12 +4,14 @@ import (
 	"os"
 	"strings"
 
+	deis "github.com/deis/controller-sdk-go"
 	"github.com/deis/workflow-e2e/tests/cmd"
 	"github.com/deis/workflow-e2e/tests/cmd/apps"
 	"github.com/deis/workflow-e2e/tests/cmd/auth"
 	"github.com/deis/workflow-e2e/tests/cmd/builds"
 	"github.com/deis/workflow-e2e/tests/model"
 	"github.com/deis/workflow-e2e/tests/settings"
+	"github.com/deis/workflow-e2e/tests/util"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -51,7 +53,7 @@ var _ = Describe("deis apps", func() {
 
 			Specify("that user cannot get information about that app", func() {
 				sess, err := cmd.Start("deis info -a %s", &user, bogusAppName)
-				Eventually(sess.Err).Should(Say("Not found."))
+				Eventually(sess.Err).Should(Say(util.PrependError(deis.ErrNotFound)))
 				Expect(err).NotTo(HaveOccurred())
 				Eventually(sess).Should(Exit(1))
 			})
@@ -65,7 +67,7 @@ var _ = Describe("deis apps", func() {
 
 			Specify("that user cannot open that app", func() {
 				sess, err := cmd.Start("deis open -a %s", &user, bogusAppName)
-				Eventually(sess.Err).Should(Say("404 Not Found"))
+				Eventually(sess.Err).Should(Say(util.PrependError(deis.ErrNotFound)))
 				Expect(err).NotTo(HaveOccurred())
 				Eventually(sess).Should(Exit(1))
 			})
@@ -73,7 +75,7 @@ var _ = Describe("deis apps", func() {
 			Specify("that user cannot run a command in that app's environment", func() {
 				sess, err := cmd.Start("deis apps:run -a %s echo Hello, 世界", &user, bogusAppName)
 				Eventually(sess).Should(Say("Running 'echo Hello, 世界'..."))
-				Eventually(sess.Err).Should(Say("Not found."))
+				Eventually(sess.Err).Should(Say(util.PrependError(deis.ErrNotFound)))
 				Expect(err).NotTo(HaveOccurred())
 				Eventually(sess).ShouldNot(Exit(0))
 			})
@@ -116,7 +118,7 @@ var _ = Describe("deis apps", func() {
 					Expect(err).NotTo(HaveOccurred())
 					Eventually(sess).Should(Exit(0))
 					sess, err = cmd.Start("deis info -a %s", &user, app.Name)
-					Eventually(sess.Err).Should(Say("You do not have permission to perform this action."))
+					Eventually(sess.Err).Should(Say(util.PrependError(deis.ErrForbidden)))
 					Expect(err).NotTo(HaveOccurred())
 					Eventually(sess).Should(Exit(1))
 					// Transer back or else cleanup will fail.
