@@ -1,6 +1,7 @@
 package model
 
 import (
+	"bytes"
 	"fmt"
 	"math/rand"
 	"path"
@@ -71,4 +72,32 @@ func getRandCertName() string {
 func getDir() string {
 	_, filename, _, _ := runtime.Caller(1)
 	return path.Dir(filename)
+}
+
+// CmdResult represents a generic command result, with expected Out, Err and
+// ExitCode
+type CmdResult struct {
+	Out      []byte
+	Err      []byte
+	ExitCode int
+}
+
+// Satisfies returns whether or not the original CmdResult, ocd, meets all of
+// the expectations contained in the expeced CmdResult, ecd
+func (ocd CmdResult) Satisfies(ecd CmdResult) bool {
+	if !bytes.Contains(ocd.Out, ecd.Out) {
+		return false
+	}
+	if !bytes.Contains(ocd.Err, ecd.Err) {
+		return false
+	}
+	if ocd.ExitCode != ecd.ExitCode {
+		return false
+	}
+	return true
+}
+
+// String returns the CmdResult in printable form
+func (ocd CmdResult) String() string {
+	return fmt.Sprintf("[Out: '%s', Err: '%s', ExitCode: '%d']", ocd.Out, ocd.Err, ocd.ExitCode)
 }

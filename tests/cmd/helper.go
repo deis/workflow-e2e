@@ -66,6 +66,7 @@ func StartCmd(command model.Cmd) (*gexec.Session, error) {
 // supplied <timeout> until the <cmd> result contains the <expectedResult>
 // An example use of this utility would be curl-ing a url and waiting
 // until the response code matches the expected response.
+// TODO: https://github.com/deis/workflow-e2e/issues/240
 func Retry(command model.Cmd, expectedResult string, timeout int) bool {
 	var result string
 	fmt.Fprintf(ginkgo.GinkgoWriter, "Waiting up to %d seconds for `%s` to return %s...\n", timeout, command.CommandLineString, expectedResult)
@@ -80,4 +81,39 @@ func Retry(command model.Cmd, expectedResult string, timeout int) bool {
 	}
 	fmt.Fprintf(ginkgo.GinkgoWriter, "FAIL: '%s' does not match expected result of '%s'\n", result, expectedResult)
 	return false
+}
+
+// RetryUntilResult runs the provided cmd repeatedly, once every period,
+// up to the supplied timeout until the cmd result matches the supplied
+// expectedCmdResult
+func RetryUntilResult(command model.Cmd, expectedCmdResult model.CmdResult, period, timeout time.Duration) bool {
+	var actualCmdResult model.CmdResult
+
+	fmt.Fprintf(ginkgo.GinkgoWriter,
+		"Waiting up to %d seconds for `%s` to return expected cmdResult %s...\n",
+		int(timeout.Seconds()), command.CommandLineString, expectedCmdResult.String())
+
+	tck := time.NewTicker(period)
+	tmr := time.NewTimer(timeout)
+	defer tck.Stop()
+	defer tmr.Stop()
+	for {
+		select {
+		case <-tck.C:
+			sess, err := StartCmd(command)
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+			sessWait := sess.Wait()
+			actualCmdResult = model.CmdResult{
+				Out:      sessWait.Out.Contents(),
+				Err:      sessWait.Err.Contents(),
+				ExitCode: sessWait.ExitCode(),
+			}
+			if actualCmdResult.Satisfies(expectedCmdResult) {
+				return true
+			}
+		case <-tmr.C:
+			fmt.Fprintf(ginkgo.GinkgoWriter, "FAIL: Actual cmdResult '%v' does not match expected cmdResult '%v'\n", actualCmdResult, expectedCmdResult)
+			return false
+		}
+	}
 }
