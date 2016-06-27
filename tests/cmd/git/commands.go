@@ -25,11 +25,16 @@ const (
 
 // Push executes a `git push deis master` from the current directory using the provided key.
 func Push(user model.User, keyPath string, app model.App, banner string) {
-	sess := doGitPush(user, keyPath)
+	sess := StartPush(user, keyPath)
 	// sess.Wait(settings.MaxEventuallyTimeout)
 	// output := string(sess.Out.Contents())
 	// Expect(output).To(MatchRegexp(`Done, %s:v\d deployed to Deis`, app.Name))
 	Eventually(sess, settings.MaxEventuallyTimeout).Should(Exit(0))
+	Curl(app, banner)
+}
+
+// Curl polls an app over HTTP until it returns the expected "Powered by" banner.
+func Curl(app model.App, banner string) {
 	// curl the app's root URL and print just the HTTP response code
 	cmdRetryTimeout := 60
 	curlCmd := model.Cmd{CommandLineString: fmt.Sprintf(
@@ -43,12 +48,12 @@ func Push(user model.User, keyPath string, app model.App, banner string) {
 // PushWithInterrupt executes a `git push deis master` from the current
 // directory using the provided key, but then halts the progress via SIGINT.
 func PushWithInterrupt(user model.User, keyPath string) {
-	sess := doGitPush(user, keyPath)
+	sess := StartPush(user, keyPath)
 	Eventually(sess.Err).Should(Say("Starting build... but first, coffee!"))
 
 	sess = sess.Interrupt()
 
-	newSess := doGitPush(user, keyPath)
+	newSess := StartPush(user, keyPath)
 	Eventually(newSess.Err).ShouldNot(Say("exec request failed on channel 0"))
 	Eventually(newSess.Err).Should(Say("fatal: remote error: Another git push is ongoing"))
 	Eventually(newSess, settings.DefaultEventuallyTimeout).Should(Exit(128))
@@ -67,7 +72,8 @@ func PushUntilResult(user model.User, keyPath string, expectedCmdResult model.Cm
 		settings.MaxEventuallyTimeout)).Should(BeTrue())
 }
 
-func doGitPush(user model.User, keyPath string) *Session {
+// StartPush starts a `git push deis master` command and returns the command session.
+func StartPush(user model.User, keyPath string) *Session {
 	sess, err := cmd.Start(pushCommandLineString, &user, settings.GitSSH, keyPath)
 	Expect(err).NotTo(HaveOccurred())
 	return sess
