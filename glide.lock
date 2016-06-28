@@ -2,9 +2,7 @@ hash: 3e43564ccccf3c46aa70fb8028d93ce53e90cfc9db09d979d5c46ddf0734d09e
 updated: 2016-06-24T13:03:49.725476916-07:00
 imports:
 - name: github.com/deis/controller-sdk-go
-  version: eb17597ec8bed052cbc2cc3dc55ae896219b09f7
-  subpackages:
-  - pkg/time
+  version: ac8f6dce8f544c137607408f568fbf868e8027a9
 - name: github.com/golang/protobuf
   version: 0c1f6d65b5a189c2250d10e71a5506f06f9fa0a0
   subpackages:
