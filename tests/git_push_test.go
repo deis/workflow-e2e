@@ -173,6 +173,30 @@ var _ = Describe("git push deis master", func() {
 						git.Curl(app, "Powered by Deis")
 					})
 
+					Context("with a bad Dockerfile", func() {
+
+						BeforeEach(func() {
+							badCommit := `echo "BOGUS command" >> Dockerfile && EMAIL="ci@deis.com" git commit Dockerfile -m "Added a bogus command"`
+							output, err := cmd.Execute(badCommit)
+							Expect(err).NotTo(HaveOccurred(), output)
+						})
+
+						AfterEach(func() {
+							undoCommit := `git reset --hard HEAD~`
+							output, err := cmd.Execute(undoCommit)
+							Expect(err).NotTo(HaveOccurred(), output)
+						})
+
+						Specify("that user can't deploy that app using a git push", func() {
+							sess := git.StartPush(user, keyPath)
+							Eventually(sess, settings.MaxEventuallyTimeout).Should(Exit(1))
+							// TODO: this output doesn't show up 100% of the time! Needs a fix in dockerbuilder.
+							// Eventually(sess.Err).Should(Say("Unknown instruction: BOGUS"))
+							Eventually(sess.Err).Should(Say("error: failed to push some refs"))
+						})
+
+					})
+
 					Context("and who has another local git repo containing dockerfile source code", func() {
 
 						BeforeEach(func() {
