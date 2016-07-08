@@ -190,8 +190,7 @@ var _ = Describe("git push deis master", func() {
 						Specify("that user can't deploy that app using a git push", func() {
 							sess := git.StartPush(user, keyPath)
 							Eventually(sess, settings.MaxEventuallyTimeout).Should(Exit(1))
-							// TODO: this output doesn't show up 100% of the time! Needs a fix in dockerbuilder.
-							// Eventually(sess.Err).Should(Say("Unknown instruction: BOGUS"))
+							Eventually(sess.Err).Should(Say("Unknown instruction: BOGUS"))
 							Eventually(sess.Err).Should(Say("error: failed to push some refs"))
 						})
 
