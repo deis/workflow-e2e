@@ -128,6 +128,13 @@ var _ = Describe("git push deis master", func() {
 
 					})
 
+					Specify("and can execute deis run successfully", func() {
+						git.Push(user, keyPath, app, "Powered by Deis")
+						sess, err := cmd.Start("deis run env -a %s", &user, app.Name)
+						Expect(err).NotTo(HaveOccurred())
+						Eventually(sess).Should(Exit(0))
+					})
+
 				})
 
 			})
@@ -230,6 +237,13 @@ var _ = Describe("git push deis master", func() {
 
 						})
 
+					})
+
+					Specify("and can execute deis run successfully", func() {
+						git.Push(user, keyPath, app, "Powered by Deis")
+						sess, err := cmd.Start("deis run env -a %s", &user, app.Name)
+						Expect(err).NotTo(HaveOccurred())
+						Eventually(sess).Should(Exit(0))
 					})
 
 				})
