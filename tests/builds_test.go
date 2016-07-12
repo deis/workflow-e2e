@@ -72,6 +72,23 @@ var _ = Describe("deis builds", func() {
 				builds.Pull(user, app)
 			})
 
+			Specify("that user can't create a new build of that app from a nonexistent image using `deis pull`", func() {
+				// Docker Hub gives a "not found" 400 error
+				nonexistentImage := "deis/nonexistent:dummy"
+				sess, err := cmd.Start("deis pull --app=%s %s", &user, app.Name, nonexistentImage)
+				Expect(err).NotTo(HaveOccurred())
+				Eventually(sess).Should(Say("Creating build..."))
+				Eventually(sess.Err).Should(Say("image %s not found", nonexistentImage))
+				Eventually(sess, settings.MaxEventuallyTimeout).Should(Exit(1))
+				// quay.io gives a "permission denied" 400 error
+				nonexistentImage = "quay.io/deis/nonexistent:dummy"
+				sess, err = cmd.Start("deis pull --app=%s %s", &user, app.Name, nonexistentImage)
+				Expect(err).NotTo(HaveOccurred())
+				Eventually(sess).Should(Say("Creating build..."))
+				Eventually(sess.Err).Should(Say("Permission Denied attempting to pull image %s", nonexistentImage))
+				Eventually(sess, settings.MaxEventuallyTimeout).Should(Exit(1))
+			})
+
 			Specify("that user can create multiple builds of that app with DEPLOY_BATCHES set to 5", func() {
 				builds.Pull(user, app)
 
