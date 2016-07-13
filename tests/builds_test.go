@@ -78,14 +78,14 @@ var _ = Describe("deis builds", func() {
 				sess, err := cmd.Start("deis pull --app=%s %s", &user, app.Name, nonexistentImage)
 				Expect(err).NotTo(HaveOccurred())
 				Eventually(sess).Should(Say("Creating build..."))
-				Eventually(sess.Err).Should(Say("image %s not found", nonexistentImage))
+				Eventually(sess.Err).Should(Say(`image .* not found`))
 				Eventually(sess, settings.MaxEventuallyTimeout).Should(Exit(1))
 				// quay.io gives a "permission denied" 400 error
 				nonexistentImage = "quay.io/deis/nonexistent:dummy"
 				sess, err = cmd.Start("deis pull --app=%s %s", &user, app.Name, nonexistentImage)
 				Expect(err).NotTo(HaveOccurred())
 				Eventually(sess).Should(Say("Creating build..."))
-				Eventually(sess.Err).Should(Say("Permission Denied attempting to pull image %s", nonexistentImage))
+				Eventually(sess.Err).Should(Say("Permission Denied attempting to pull image"))
 				Eventually(sess, settings.MaxEventuallyTimeout).Should(Exit(1))
 			})
 
