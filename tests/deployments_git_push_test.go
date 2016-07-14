@@ -94,6 +94,32 @@ var _ = Describe("git push deis master", func() {
 						git.Curl(app, "Powered by Deis")
 					})
 
+					Context("with a bad buildpack", func() {
+
+						BeforeEach(func() {
+							badBuildpackURL := "https://github.com/deis/heroku-buildpack-epic-fail.git"
+							sess, err := cmd.Start("deis config:set BUILDPACK_URL=%s", &user, badBuildpackURL)
+							Expect(err).NotTo(HaveOccurred())
+							Eventually(sess).Should(Say("BUILDPACK_URL"))
+							Eventually(sess).Should(Exit(0))
+						})
+
+						AfterEach(func() {
+							sess, err := cmd.Start("deis config:unset BUILDPACK_URL", &user)
+							Expect(err).NotTo(HaveOccurred())
+							Eventually(sess).ShouldNot(Say("BUILDPACK_URL"))
+							Eventually(sess).Should(Exit(0))
+						})
+
+						Specify("that user can't deploy the app", func() {
+							sess := git.StartPush(user, keyPath)
+							Eventually(sess.Err, settings.MaxEventuallyTimeout).Should(Say("-----> Fetching custom buildpack"))
+							Eventually(sess.Err).Should(Say("exited with code 1, stopping build"))
+							Eventually(sess).Should(Exit(1))
+						})
+
+					})
+
 					Context("and who has another local git repo containing buildpack source code", func() {
 
 						BeforeEach(func() {
