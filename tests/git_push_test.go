@@ -207,7 +207,7 @@ var _ = Describe("git push deis master", func() {
 
 						BeforeEach(func() {
 							os.Chdir("..")
-							output, err := cmd.Execute(`git clone https://github.com/deis/example-dockerfile-python.git`)
+							output, err := cmd.Execute(`git clone https://github.com/deis/example-dockerfile-procfile-http.git`)
 							Expect(err).NotTo(HaveOccurred(), output)
 						})
 
@@ -216,7 +216,7 @@ var _ = Describe("git push deis master", func() {
 							var app2 model.App
 
 							BeforeEach(func() {
-								os.Chdir("example-dockerfile-python")
+								os.Chdir("example-dockerfile-procfile-http")
 								app2 = apps.Create(user)
 							})
 
@@ -227,12 +227,13 @@ var _ = Describe("git push deis master", func() {
 							Specify("that user can deploy both apps concurrently", func() {
 								os.Chdir(filepath.Join("..", "example-dockerfile-http"))
 								sess := git.StartPush(user, keyPath)
-								os.Chdir(filepath.Join("..", "example-dockerfile-python"))
+								os.Chdir(filepath.Join("..", "example-dockerfile-procfile-http"))
 								sess2 := git.StartPush(user, keyPath)
 								Eventually(sess, settings.MaxEventuallyTimeout).Should(Exit(0))
 								Eventually(sess2, settings.MaxEventuallyTimeout).Should(Exit(0))
 								git.Curl(app, "Powered by Deis")
 								git.Curl(app2, "Powered by Deis")
+								_ = listProcs(user, app2, "web")
 							})
 
 						})
