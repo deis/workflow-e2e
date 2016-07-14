@@ -61,7 +61,7 @@ var _ = Describe("deis ps", func() {
 					Eventually(sess).Should(Exit(0))
 
 					// test that there are the right number of processes listed
-					procsListing := listDeploymentProcs(user, app).Out.Contents()
+					procsListing := listDeploymentProcs(user, app, "").Out.Contents()
 					procs := scrapeDeploymentProcs(app.Name, procsListing)
 					Expect(len(procs)).To(Equal(scaleTo))
 
@@ -145,7 +145,7 @@ var _ = Describe("deis ps", func() {
 					Eventually(sess).Should(Exit(0))
 
 					// capture the process names
-					procsListing := listDeploymentProcs(user, app).Out.Contents()
+					procsListing := listDeploymentProcs(user, app, "").Out.Contents()
 					afterProcs := scrapeDeploymentProcs(app.Name, procsListing)
 
 					// compare the before and after sets of process names
@@ -178,9 +178,12 @@ var _ = Describe("deis ps", func() {
 
 })
 
-func listDeploymentProcs(user model.User, app model.App) *Session {
+func listDeploymentProcs(user model.User, app model.App, proctype string) *Session {
 	sess, err := cmd.Start("deis ps:list --app=%s", &user, app.Name)
 	Eventually(sess).Should(Say("=== %s Processes", app.Name))
+	if proctype != "" {
+		Eventually(sess).Should(Say("--- %s:", proctype))
+	}
 	Expect(err).NotTo(HaveOccurred())
 	Eventually(sess).Should(Exit(0))
 	return sess

@@ -40,7 +40,7 @@ var _ = Describe("all dockerfile apps", func() {
 			})
 
 			DescribeTable("can deploy an example dockerfile app",
-				func(url, buildpack, banner string) {
+				func(url, buildpack, banner, proctype string) {
 
 					var app model.App
 
@@ -59,13 +59,15 @@ var _ = Describe("all dockerfile apps", func() {
 					configs.Set(user, app, "DEIS_KUBERNETES_DEPLOYMENTS", "1")
 					defer apps.Destroy(user, app)
 					git.Push(user, keyPath, app, banner)
-
+					_ = listDeploymentProcs(user, app, proctype)
 				},
 
 				Entry("HTTP", "https://github.com/deis/example-dockerfile-http.git", "",
 					"Powered by Deis"),
 				Entry("Python", "https://github.com/deis/example-dockerfile-python.git", "",
 					"Powered by Deis"),
+				Entry("HTTP-Web", "https://github.com/deis/example-dockerfile-procfile-http.git", "",
+					"Powered by Deis", "web"),
 			)
 
 		})
