@@ -38,7 +38,7 @@ export DEIS_CONTROLLER_URL=http://deis.${DEIS_ROUTER_SERVICE_HOST}.nip.io
 endif
 endif
 
-DEV_IMG := quay.io/deis/go-dev:0.13.0
+DEV_IMG := quay.io/deis/go-dev:0.14.0
 DEV_CMD_ARGS := --rm -v ${CURDIR}:${SRC_PATH} -w ${SRC_PATH} ${DEV_IMG}
 DEV_CMD := docker run ${DEV_CMD_ARGS}
 DEV_CMD_INT := docker run -it ${DEV_CMD_ARGS}
