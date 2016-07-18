@@ -14,4 +14,9 @@ fi
 echo "Installing Workflow CLI version '${CLI_VERSION}' via url '${URL}'"
 curl "${URL}" -f -o /usr/local/bin/deis && chmod +x /usr/local/bin/deis
 
-make test-integration
+if [ "$TEST" == "bps" ]; then
+	make test-buildpacks
+	make test-dockerfiles
+else
+	make test-integration
+fi
