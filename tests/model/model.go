@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/deis/workflow-e2e/tests/settings"
+	"github.com/deis/workflow-e2e/tests/util"
 )
 
 var Admin = User{
@@ -39,10 +40,18 @@ type App struct {
 
 func NewApp() App {
 	name := fmt.Sprintf("test-%d", rand.Intn(999999999))
-	return App{
+	app := App{
 		Name: name,
 		URL:  strings.Replace(settings.DeisControllerURL, "deis", name, 1),
 	}
+	// try adding the URL to /etc/hosts but don't cry if it's not in there because the user may
+	// have other plans in store for DNS
+	if err := util.AddToEtcHosts(fmt.Sprintf("%s.%s", name, settings.DeisRootHostname)); err != nil {
+		fmt.Printf("WARNING: could not write %s to /etc/hosts (%s), continuing anyways\n",
+			app.URL,
+			err)
+	}
+	return app
 }
 
 type Cmd struct {

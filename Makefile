@@ -32,12 +32,6 @@ IMAGE_PREFIX ?= deis
 IMAGE := ${DEIS_REGISTRY}${IMAGE_PREFIX}/${SHORT_NAME}:${VERSION}
 MUTABLE_IMAGE := ${DEIS_REGISTRY}${IMAGE_PREFIX}/${SHORT_NAME}:${MUTABLE_VERSION}
 
-ifndef DEIS_CONTROLLER_URL
-ifdef DEIS_ROUTER_SERVICE_HOST
-export DEIS_CONTROLLER_URL=http://deis.${DEIS_ROUTER_SERVICE_HOST}.nip.io
-endif
-endif
-
 DEV_IMG := quay.io/deis/go-dev:0.14.0
 DEV_CMD_ARGS := --rm -v ${CURDIR}:${SRC_PATH} -w ${SRC_PATH} ${DEV_IMG}
 DEV_CMD := docker run ${DEV_CMD_ARGS}
@@ -46,6 +40,8 @@ RUN_CMD := docker run --rm -e GINKGO_NODES=${GINKGO_NODES} \
 	-e SKIP_OPTS=${SKIP_OPTS} \
 	-e FOCUS_OPTS=${FOCUS_OPTS} \
 	-e DEIS_CONTROLLER_URL=${DEIS_CONTROLLER_URL} \
+	-e DEIS_ROUTER_SERVICE_HOST=${DEIS_ROUTER_SERVICE_HOST} \
+	-e DEIS_ROUTER_SERVICE_PORT=${DEIS_ROUTER_SERVICE_PORT} \
 	-e DEFAULT_EVENTUALLY_TIMEOUT=${DEFAULT_EVENTUALLY_TIMEOUT} \
 	-e MAX_EVENTUALLY_TIMEOUT=${MAX_EVENTUALLY_TIMEOUT} \
 	-e JUNIT=${JUNIT} \
@@ -53,14 +49,6 @@ RUN_CMD := docker run --rm -e GINKGO_NODES=${GINKGO_NODES} \
 	-e CLI_VERSION=${CLI_VERSION} \
 	-v ${HOME}/.kube:/root/.kube \
 	-w ${SRC_PATH} ${IMAGE}
-
-check-controller-url:
-	@if [ -z "$$DEIS_CONTROLLER_URL" ]; then \
-		echo "DEIS_CONTROLLER_URL is not exported. You must export this variable to proceed."; \
-		echo "Its value should match the Deis Controller URL you would ordinarily use with"; \
-		echo "the \`deis register\` or \`deis login\` commands."; \
-	exit 2; \
-	fi
 
 dev-env:
 	${DEV_CMD_INT} bash
@@ -71,7 +59,7 @@ bootstrap:
 docker-bootstrap:
 	${DEV_CMD} make bootstrap
 
-test-integration: check-controller-url
+test-integration:
 	ginkgo ${TEST_OPTS} tests/
 
 docker-build:
@@ -90,8 +78,7 @@ docker-mutable-push:
 docker-test-integration:
 	${RUN_CMD} ./docker-test-integration.sh
 
-.PHONY: check-controller-url \
-				dev-env \
+.PHONY: dev-env \
 				bootstrap \
 				docker-bootstrap \
 				test-integration \
