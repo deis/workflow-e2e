@@ -1,6 +1,6 @@
 FROM golang:1.6-alpine
 
-ENV K8S_VERSION=1.2.2 GLIDE_VERSION=0.10.2 GLIDE_HOME=/root GO15VENDOREXPERIMENT=1 JUNIT=true
+ENV K8S_VERSION=1.2.5 GLIDE_VERSION=0.11.1 GLIDE_HOME=/root GO15VENDOREXPERIMENT=1 JUNIT=true
 
 RUN apk add --update-cache \
 	bash \
@@ -19,7 +19,7 @@ RUN apk add --update-cache \
 	&& CGO_ENABLED=0 godep go build -o /usr/local/bin/kubectl cmd/kubectl/kubectl.go \
 	&& cd ~ \
 	&& rm -rf $GOPATH/src/k8s.io/kubernetes \
-	&& curl -L https://github.com/Masterminds/glide/releases/download/$GLIDE_VERSION/glide-$GLIDE_VERSION-linux-amd64.tar.gz | tar xvz -C /tmp \
+	&& curl -L https://github.com/Masterminds/glide/releases/download/v$GLIDE_VERSION/glide-v$GLIDE_VERSION-linux-amd64.tar.gz | tar xvz -C /tmp \
 	&& mv /tmp/linux-amd64/glide /usr/local/bin \
 	&& rm -rf /tmp/linux-amd64
 
