@@ -62,6 +62,12 @@ docker-bootstrap:
 test-integration:
 	ginkgo ${TEST_OPTS} tests/
 
+test-buildpacks: check-controller-url
+	ginkgo --focus="all buildpack apps" tests
+
+test-dockerfiles: check-controller-url
+	ginkgo --focus="all dockerfile apps" tests
+	
 docker-build:
 	docker build -t ${IMAGE} ${CURDIR}
 	docker tag ${IMAGE} ${MUTABLE_IMAGE}
