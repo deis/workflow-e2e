@@ -16,7 +16,7 @@ export GINKO_NODES_ARG=-p
 endif
 
 ifdef FOCUS_TEST
-FOCUS_OPTS := --focus="${FOCUS_TEST}"
+FOCUS_OPTS := --focus="\"${FOCUS_TEST}\""
 endif
 
 ifdef SKIP_TEST
