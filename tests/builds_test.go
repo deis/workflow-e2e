@@ -73,6 +73,7 @@ var _ = Describe("deis builds", func() {
 			})
 
 			Specify("that user can't create a new build of that app from a nonexistent image using `deis pull`", func() {
+				builds.Create(user, app)
 				// Docker Hub gives a "not found" 400 error
 				nonexistentImage := "deis/nonexistent:dummy"
 				sess, err := cmd.Start("deis pull --app=%s %s", &user, app.Name, nonexistentImage)
@@ -87,6 +88,11 @@ var _ = Describe("deis builds", func() {
 				Eventually(sess).Should(Say("Creating build..."))
 				Eventually(sess.Err).Should(Say("Permission Denied attempting to pull image"))
 				Eventually(sess, settings.MaxEventuallyTimeout).Should(Exit(1))
+
+				// test that the old rc is not deleted after a failed build
+				procsListing := listProcs(user, app, "").Out.Contents()
+				procs := scrapeProcs(app.Name, procsListing)
+				Expect(len(procs)).To(Equal(1))
 			})
 
 			Specify("that user can create multiple builds of that app with DEPLOY_BATCHES set to 5", func() {
