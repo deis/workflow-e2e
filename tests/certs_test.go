@@ -180,8 +180,11 @@ var _ = Describe("deis certs", func() {
 			Specify("that user can limit the number of certs returned by certs:list", func() {
 				randCertRegExp := `\d{0,9}-cert`
 
-				sess, err := cmd.Start("deis certs:list -l 0", &user)
-				Eventually(sess).Should(Say("No certs"))
+				// limit=0 is invalid as of DRF 3.4
+				// https://github.com/tomchristie/django-rest-framework/pull/4194
+				sess, err := cmd.Start("deis certs:list --limit=0", &user)
+				Eventually(sess).Should(Say(randCertRegExp))
+				Eventually(sess).Should(Say(randCertRegExp))
 				Expect(err).NotTo(HaveOccurred())
 				Eventually(sess).Should(Exit(0))
 
