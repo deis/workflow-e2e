@@ -96,7 +96,7 @@ var _ = Describe("deis apps", func() {
 
 			Specify("that user cannot create a new app with the same name", func() {
 				sess, err := cmd.Start("deis apps:create %s", &user, app.Name)
-				Eventually(sess.Err).Should(Say("App with this id already exists."))
+				Eventually(sess.Err).Should(Say("Application with this id already exists."))
 				Expect(err).NotTo(HaveOccurred())
 				Eventually(sess).ShouldNot(Exit(0))
 			})
