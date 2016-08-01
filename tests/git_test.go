@@ -7,6 +7,7 @@ import (
 	"github.com/deis/workflow-e2e/tests/cmd/apps"
 	"github.com/deis/workflow-e2e/tests/cmd/auth"
 	"github.com/deis/workflow-e2e/tests/model"
+	"github.com/deis/workflow-e2e/tests/settings"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -64,7 +65,7 @@ var _ = Describe("deis git", func() {
 			app := apps.Create(user)
 			defer apps.Destroy(user, app)
 			sess, err := cmd.Start("deis git:remote --app=foo", &user)
-			Eventually(sess).Should(Say("Error: Remote deis already exists, please run"))
+			Eventually(sess.Err, settings.MaxEventuallyTimeout).Should(Say("Error: Remote deis already exists, please run"))
 			Expect(err).NotTo(HaveOccurred())
 			Eventually(sess).Should(Exit(1))
 			sess, err = cmd.Start("deis git:remote -f --app=foo", &user)
