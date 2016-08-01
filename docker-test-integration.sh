@@ -12,7 +12,7 @@ if [[ "${CLI_VERSION}" != "latest" ]]; then
 fi
 
 echo "Installing Workflow CLI version '${CLI_VERSION}' via url '${URL}'"
-curl "${URL}" -f -o /usr/local/bin/deis && chmod +x /usr/local/bin/deis
+curl -s "${URL}" -f -o /usr/local/bin/deis && chmod +x /usr/local/bin/deis
 
 if [ "$TEST" == "bps" ]; then
 	make test-buildpacks
