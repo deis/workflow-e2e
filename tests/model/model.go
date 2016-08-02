@@ -25,7 +25,7 @@ type User struct {
 }
 
 func NewUser() User {
-	randSuffix := rand.Intn(100000)
+	randSuffix := rand.Intn(999999999)
 	return User{
 		Username: fmt.Sprintf("test-%d", randSuffix),
 		Password: "asdf1234",
