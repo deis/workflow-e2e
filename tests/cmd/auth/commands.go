@@ -72,6 +72,18 @@ func Whoami(user model.User) {
 	Expect(err).NotTo(HaveOccurred())
 }
 
+func WhoamiAll(user model.User) {
+	sess, err := cmd.Start("deis auth:whoami --all", &user)
+	Eventually(sess).Should(Say("ID: 0\nUsername: %s\nEmail: %s", user.Username, user.Email))
+	Eventually(sess).Should(Say(`First Name: `))
+	Eventually(sess).Should(Say(`Last Name: `))
+	Eventually(sess).Should(Say(`Last Login: `))
+	Eventually(sess).Should(Say("Is Superuser: %t\nIs Staff: %t\nIs Active: true\n", user.IsSuperuser, user.IsSuperuser))
+	Eventually(sess).Should(Say(`Date Joined: `))
+	Eventually(sess).Should(Exit(0))
+	Expect(err).NotTo(HaveOccurred())
+}
+
 // Regenerate executes `deis auth:regenerate` as the specified user.
 func Regenerate(user model.User) {
 	sess, err := cmd.Start("deis auth:regenerate", &user)

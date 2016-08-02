@@ -13,23 +13,26 @@ import (
 )
 
 var Admin = User{
-	Username: "admin",
-	Password: "admin",
-	Email:    "admintest@deis.com",
+	Username:    "admin",
+	Password:    "admin",
+	Email:       "admintest@deis.com",
+	IsSuperuser: false,
 }
 
 type User struct {
-	Username string
-	Password string
-	Email    string
+	Username    string
+	Password    string
+	Email       string
+	IsSuperuser bool
 }
 
 func NewUser() User {
 	randSuffix := rand.Intn(999999999)
 	return User{
-		Username: fmt.Sprintf("test-%d", randSuffix),
-		Password: "asdf1234",
-		Email:    fmt.Sprintf("test-%d@deis.io", randSuffix),
+		Username:    fmt.Sprintf("test-%d", randSuffix),
+		Password:    "asdf1234",
+		Email:       fmt.Sprintf("test-%d@deis.io", randSuffix),
+		IsSuperuser: false,
 	}
 }
 

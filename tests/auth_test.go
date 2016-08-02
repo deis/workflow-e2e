@@ -65,6 +65,10 @@ var _ = Describe("deis auth", func() {
 			auth.Whoami(user)
 		})
 
+		Specify("that user can print extensive information about themself", func() {
+			auth.WhoamiAll(user)
+		})
+
 		Specify("that user can regenerates their own token", func() {
 			auth.Regenerate(user)
 		})
