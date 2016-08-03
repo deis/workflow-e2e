@@ -189,10 +189,10 @@ func listProcs(user model.User, app model.App, proctype string) *Session {
 
 // scrapeProcs returns the sorted process names for an app from the given output.
 // It matches the current "deis ps" output for a healthy container:
-//   earthy-vocalist-v2-cmd-1d73e up (v2)
-//   myapp-v16-web-bujlq up (v16)
+//   earthy-vocalist-cmd-123456789-1d73e up (v2)
+//   myapp-web-123456789-bujlq up (v16)
 func scrapeProcs(app string, output []byte) []string {
-	procsRegexp := `(%s-v\d+-[\w-]+) up \(v\d+\)`
+	procsRegexp := `(%s-[\w-]+) up \(v\d+\)`
 	re := regexp.MustCompile(fmt.Sprintf(procsRegexp, app))
 	found := re.FindAllSubmatch(output, -1)
 	procs := make([]string, len(found))
