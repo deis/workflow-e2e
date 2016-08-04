@@ -149,7 +149,7 @@ var _ = Describe("deis apps", func() {
 		Context("who owns an existing app that has already been deployed", func() {
 
 			uuidRegExp := `[0-9a-f]{8}-([0-9a-f]{4}-){3}[0-9a-f]{12}`
-			procsRegexp := `(%s-v\d+-[\w-]+) up \(v\d+\)`
+			procsRegexp := `(%s-[\w-]+) up \(v\d+\)`
 
 			var app model.App
 
