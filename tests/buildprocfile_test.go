@@ -59,7 +59,7 @@ var _ = Describe("deis builds procfile", func() {
 				Eventually(sess, settings.MaxEventuallyTimeout).Should(Say(`done in \d+s`))
 				Eventually(sess).Should(Say("=== %s Processes", app.Name))
 				Eventually(sess).Should(Say("--- %s:", "web"))
-				Eventually(sess).Should(Say(`(%s-v\d+-[\w-]+) up \(v\d+\)`, app.Name))
+				Eventually(sess).Should(Say(`(%s-[\w-]+) up \(v\d+\)`, app.Name))
 
 			})
 
