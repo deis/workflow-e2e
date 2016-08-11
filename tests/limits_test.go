@@ -67,8 +67,8 @@ var _ = Describe("deis limits", func() {
 			})
 
 			Specify("that user can set a CPU limit on that application", func() {
-				sess, err := cmd.Start("deis limits:set --cpu cmd=1024 -a %s", &user, app.Name)
-				Eventually(sess, settings.MaxEventuallyTimeout).Should(Say("--- CPU\ncmd     1024"))
+				sess, err := cmd.Start("deis limits:set --cpu cmd=500m -a %s", &user, app.Name)
+				Eventually(sess, settings.MaxEventuallyTimeout).Should(Say("--- CPU\ncmd     500m"))
 				Expect(err).NotTo(HaveOccurred())
 				Eventually(sess).Should(Exit(0))
 			})
