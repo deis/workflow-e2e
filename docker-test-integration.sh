@@ -11,8 +11,11 @@ if [[ "${CLI_VERSION}" != "latest" ]]; then
 	URL="${BASE_URL}/${CLI_VERSION}/deis-${CLI_VERSION}-linux-amd64"
 fi
 
+# Download CLI, retry up to 5 times with 10 second delay between each
 echo "Installing Workflow CLI version '${CLI_VERSION}' via url '${URL}'"
-curl -s "${URL}" -f -o /usr/local/bin/deis && chmod +x /usr/local/bin/deis
+curl --silent -I "${URL}"
+curl --silent --retry 5 --retry-delay 10 -o /usr/local/bin/deis "${URL}"
+chmod +x /usr/local/bin/deis
 
 echo "Workflow CLI Version '$(deis --version)' installed."
 
