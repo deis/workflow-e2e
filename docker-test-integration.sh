@@ -13,8 +13,8 @@ fi
 
 # Download CLI, retry up to 5 times with 10 second delay between each
 echo "Installing Workflow CLI version '${CLI_VERSION}' via url '${URL}'"
-curl --silent -I "${URL}"
-curl --silent --retry 5 --retry-delay 10 -o /usr/local/bin/deis "${URL}"
+curl --silent --show-error -I "${URL}"
+curl --silent --show-error --retry 5 --retry-delay 10 -o /usr/local/bin/deis "${URL}"
 chmod +x /usr/local/bin/deis
 
 echo "Workflow CLI Version '$(deis --version)' installed."
