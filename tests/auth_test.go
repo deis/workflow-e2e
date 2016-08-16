@@ -30,7 +30,7 @@ var _ = Describe("deis auth", func() {
 
 		Specify("information on the current user cannot be printed", func() {
 			sess, err := cmd.Start("deis auth:whoami", nil)
-			Eventually(sess.Err).Should(Say("Not logged in"))
+			Eventually(sess.Err).Should(Say("Error: Client configuration file not found"))
 			Expect(err).NotTo(HaveOccurred())
 			Eventually(sess).Should(Exit(1))
 		})
