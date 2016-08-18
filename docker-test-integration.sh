@@ -4,6 +4,21 @@
 # to download the workflow CLI at runtime and run the integration tests.
 set -eo pipefail
 
+function debug {
+	if [ ! -z "${DEBUG_MODE}" ]; then
+		filename="/tmp/deis_debug"
+		touch "${filename}"
+		echo "Sleeping until ${filename} is deleted"
+
+		while [ -f "${filename}" ]
+		do
+			sleep 2
+		done
+	fi
+}
+
+trap debug ERR
+
 BASE_URL="https://storage.googleapis.com/workflow-cli"
 URL="${BASE_URL}/deis-latest-linux-amd64"
 
