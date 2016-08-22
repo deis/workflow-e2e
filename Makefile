@@ -68,6 +68,9 @@ test-buildpacks:
 test-dockerfiles:
 	ginkgo --focus="all dockerfile apps" tests
 
+docker-test-style:
+	docker run --rm -v ${CURDIR}:/bash -w /bash quay.io/deis/shell-dev shellcheck *.sh
+
 docker-build:
 	docker build -t ${IMAGE} ${CURDIR}
 	docker tag ${IMAGE} ${MUTABLE_IMAGE}
@@ -88,6 +91,7 @@ docker-test-integration:
 				bootstrap \
 				docker-bootstrap \
 				test-integration \
+				docker-test-style \
 				docker-build \
 				docker-push \
 				docker-immutable-push \

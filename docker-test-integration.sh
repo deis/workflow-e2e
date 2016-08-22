@@ -19,17 +19,23 @@ function debug {
 
 trap debug ERR
 
-BASE_URL="https://storage.googleapis.com/workflow-cli"
-URL="${BASE_URL}/deis-latest-linux-amd64"
+curl-cli-from-gcs-bucket() {
+	local gcs_bucket="${1}"
+	local base_url="https://storage.googleapis.com/${gcs_bucket}"
+	local url="${base_url}/deis-latest-linux-amd64"
 
-if [[ "${CLI_VERSION}" != "latest" ]]; then
-	URL="${BASE_URL}/${CLI_VERSION}/deis-${CLI_VERSION}-linux-amd64"
-fi
+	if [[ "${CLI_VERSION}" != "latest" ]]; then
+		url="${base_url}/${CLI_VERSION}/deis-${CLI_VERSION}-linux-amd64"
+	fi
 
-# Download CLI, retry up to 5 times with 10 second delay between each
-echo "Installing Workflow CLI version '${CLI_VERSION}' via url '${URL}'"
-curl --silent --show-error -I "${URL}"
-curl --silent --show-error --retry 5 --retry-delay 10 -o /usr/local/bin/deis "${URL}"
+	# Download CLI, retry up to 5 times with 10 second delay between each
+	echo "Installing Workflow CLI version '${CLI_VERSION}' via url '${url}'"
+	curl -f --silent --show-error -I "${url}"
+	curl -f --silent --show-error --retry 5 --retry-delay 10 -o /usr/local/bin/deis "${url}"
+}
+
+# try both buckets for specific CLI_VERSION
+curl-cli-from-gcs-bucket "workflow-cli-master" || curl-cli-from-gcs-bucket "workflow-cli-pr"
 chmod +x /usr/local/bin/deis
 
 echo "Workflow CLI Version '$(deis --version)' installed."
