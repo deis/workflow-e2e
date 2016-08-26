@@ -1,5 +1,3 @@
-export GO15VENDOREXPERIMENT=1
-
 SHORT_NAME := workflow-e2e
 
 SRC_PATH := /go/src/github.com/deis/workflow-e2e
@@ -32,7 +30,7 @@ IMAGE_PREFIX ?= deis
 IMAGE := ${DEIS_REGISTRY}${IMAGE_PREFIX}/${SHORT_NAME}:${VERSION}
 MUTABLE_IMAGE := ${DEIS_REGISTRY}${IMAGE_PREFIX}/${SHORT_NAME}:${MUTABLE_VERSION}
 
-DEV_IMG := quay.io/deis/go-dev:0.14.0
+DEV_IMG := quay.io/deis/go-dev:0.17.0
 DEV_CMD_ARGS := --rm -v ${CURDIR}:${SRC_PATH} -w ${SRC_PATH} ${DEV_IMG}
 DEV_CMD := docker run ${DEV_CMD_ARGS}
 DEV_CMD_INT := docker run -it ${DEV_CMD_ARGS}

@@ -1,38 +1,28 @@
 hash: 3e43564ccccf3c46aa70fb8028d93ce53e90cfc9db09d979d5c46ddf0734d09e
-updated: 2016-06-24T13:03:49.725476916-07:00
+updated: 2016-08-26T10:25:33.355599586-06:00
 imports:
 - name: github.com/deis/controller-sdk-go
-  version: ac8f6dce8f544c137607408f568fbf868e8027a9
-- name: github.com/golang/protobuf
-  version: 0c1f6d65b5a189c2250d10e71a5506f06f9fa0a0
-  subpackages:
-  - proto
-  - proto/testdata
-  - ptypes/any
-- name: github.com/goware/urlx
-  version: 86bdc24560383254e8b977da31a823eddf904409
+  version: 598a9aebc04e0256cc44746a98587c5a46254ba8
 - name: github.com/onsi/ginkgo
-  version: 2c2e9bb47b4e44067024f29339588cac8b34dd12
+  version: 43e2af1f01ace55adbb6d7d0f30416476db1baae
   subpackages:
   - config
+  - extensions/table
+  - reporters
   - internal/codelocation
   - internal/failer
   - internal/remote
   - internal/suite
   - internal/testingtproxy
   - internal/writer
-  - reporters
   - reporters/stenographer
   - types
-  - ginkgo/convert
-  - ginkgo/interrupthandler
-  - ginkgo/nodot
-  - ginkgo/testrunner
-  - ginkgo/testsuite
-  - ginkgo/watch
+  - internal/containernode
   - internal/leafnodes
+  - internal/spec
+  - internal/specrunner
 - name: github.com/onsi/gomega
-  version: 7ce781ea776b2fd506491011353bded2e40c8467
+  version: b48c9a8b2644326d0a44eaaacc8d83e35174a05d
   subpackages:
   - gbytes
   - gexec
@@ -41,11 +31,21 @@ imports:
   - internal/testingtsupport
   - matchers
   - types
+  - format
   - internal/oraclematcher
   - matchers/support/goraph/bipartitegraph
   - matchers/support/goraph/edge
   - matchers/support/goraph/node
   - matchers/support/goraph/util
+- name: golang.org/x/sys
+  version: a646d33e2ee3172a661fc09bca23bb4889a41bc8
+  subpackages:
+  - unix
+- name: gopkg.in/yaml.v2
+  version: e4d366fc3c7938e2958e662b4258c7a89e1f0e3e
+testImports:
+- name: github.com/goware/urlx
+  version: 86bdc24560383254e8b977da31a823eddf904409
 - name: github.com/PuerkitoBio/purell
   version: 1d5d1cfad45d42ec5f81fa8ef23de09cebc6dcc3
 - name: github.com/PuerkitoBio/urlesc
@@ -54,4 +54,3 @@ imports:
   version: bc3663df0ac92f928d419e31e0d2af22e683a5a2
   subpackages:
   - idna
-devImports: []
