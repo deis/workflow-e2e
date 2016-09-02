@@ -91,11 +91,11 @@ var _ = Describe("deis registry", func() {
 
 			Specify("that user can deploy from a private registry using registry credentials", func() {
 				// Setting a port first is required for a private registry
-				sess, err := cmd.Start("deis config:set -a %s PORT=5000", &user, app.Name)
+				sess, err := cmd.Start("deis config:set -a %s PORT=8080", &user, app.Name)
 				Expect(err).NotTo(HaveOccurred())
 				Eventually(sess).Should(Say("Creating config"))
 				Eventually(sess, settings.MaxEventuallyTimeout).Should(Say("=== %s Config", app.Name))
-				Eventually(sess).Should(Say(`PORT\s+5000`))
+				Eventually(sess).Should(Say(`PORT\s+8080`))
 				Expect(err).NotTo(HaveOccurred())
 				Eventually(sess).Should(Exit(0))
 
