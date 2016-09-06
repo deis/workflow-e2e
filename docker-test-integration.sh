@@ -22,11 +22,17 @@ trap debug ERR
 curl-cli-from-gcs-bucket() {
 	local gcs_bucket="${1}"
 	local base_url="https://storage.googleapis.com/${gcs_bucket}"
-	local url="${base_url}/deis-latest-linux-amd64"
+	local url
 
-	if [[ "${CLI_VERSION}" != "latest" ]]; then
-		url="${base_url}/${CLI_VERSION}/deis-${CLI_VERSION}-linux-amd64"
-	fi
+	case "${CLI_VERSION}" in
+		"latest" | "stable")
+			url="${base_url}"
+			;;
+		*)
+			url="${base_url}/${CLI_VERSION}"
+			;;
+	esac
+	url="${url}/deis-${CLI_VERSION}-linux-amd64"
 
 	# Download CLI, retry up to 5 times with 10 second delay between each
 	echo "Installing Workflow CLI version '${CLI_VERSION}' via url '${url}'"
