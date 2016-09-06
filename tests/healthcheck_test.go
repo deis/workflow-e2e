@@ -65,34 +65,33 @@ var _ = Describe("deis healthchecks", func() {
 				Eventually(sess).Should(Exit(0))
 			})
 
-			// disable httpGet liveness checks as it won't pass for every app
-			// TODO(bacongobbler): somehow determine *what* port we need to set the liveness check for this app
-			XSpecify("that user can set a httpGet liveness healthcheck", func() {
-				sess, err := cmd.Start("deis healthchecks:set liveness httpGet -a %s 80", &user, app.Name)
+			// 1500 is the port of the app we are deploying deis/example-dockerfile-http
+			Specify("that user can set a httpGet liveness healthcheck", func() {
+				sess, err := cmd.Start("deis healthchecks:set liveness httpGet -a %s 1500", &user, app.Name)
 				Eventually(sess).Should(Say("Applying livenessProbe healthcheck..."))
 				Eventually(sess, settings.MaxEventuallyTimeout).Should(Say("=== %s Healthchecks", app.Name))
-				Eventually(sess).Should(Say(`HTTP GET Probe\: Path="/" Port=80 HTTPHeaders=\[]`))
+				Eventually(sess).Should(Say(`HTTP GET Probe\: Path="/" Port=1500 HTTPHeaders=\[]`))
 				Expect(err).NotTo(HaveOccurred())
 				Eventually(sess).Should(Exit(0))
 
 				sess, err = cmd.Start("deis healthchecks:list -a %s", &user, app.Name)
 				Eventually(sess).Should(Say("=== %s Healthchecks", app.Name))
-				Eventually(sess).Should(Say(`HTTP GET Probe\: Path="/" Port=80 HTTPHeaders=\[]`))
+				Eventually(sess).Should(Say(`HTTP GET Probe\: Path="/" Port=1500 HTTPHeaders=\[]`))
 				Expect(err).NotTo(HaveOccurred())
 				Eventually(sess).Should(Exit(0))
 			})
 
 			Specify("that user can set a tcpSocket liveness healthcheck", func() {
-				sess, err := cmd.Start("deis healthchecks:set liveness tcpSocket -a %s 80", &user, app.Name)
+				sess, err := cmd.Start("deis healthchecks:set liveness tcpSocket -a %s 1500", &user, app.Name)
 				Eventually(sess).Should(Say("Applying livenessProbe healthcheck..."))
 				Eventually(sess, settings.MaxEventuallyTimeout).Should(Say("=== %s Healthchecks", app.Name))
-				Eventually(sess).Should(Say(`TCP Socket Probe\: Port=80`))
+				Eventually(sess).Should(Say(`TCP Socket Probe\: Port=1500`))
 				Expect(err).NotTo(HaveOccurred())
 				Eventually(sess).Should(Exit(0))
 
 				sess, err = cmd.Start("deis healthchecks:list -a %s", &user, app.Name)
 				Eventually(sess).Should(Say("=== %s Healthchecks", app.Name))
-				Eventually(sess).Should(Say(`TCP Socket Probe\: Port=80`))
+				Eventually(sess).Should(Say(`TCP Socket Probe\: Port=1500`))
 				Expect(err).NotTo(HaveOccurred())
 				Eventually(sess).Should(Exit(0))
 			})
@@ -113,31 +112,31 @@ var _ = Describe("deis healthchecks", func() {
 			})
 
 			Specify("that user can set a httpGet readiness healthcheck", func() {
-				sess, err := cmd.Start("deis healthchecks:set readiness httpGet -a %s 80", &user, app.Name)
+				sess, err := cmd.Start("deis healthchecks:set readiness httpGet -a %s 1500", &user, app.Name)
 				Eventually(sess).Should(Say("Applying readinessProbe healthcheck..."))
 				Eventually(sess, settings.MaxEventuallyTimeout).Should(Say("=== %s Healthchecks", app.Name))
-				Eventually(sess).Should(Say(`HTTP GET Probe\: Path="/" Port=80 HTTPHeaders=\[]`))
+				Eventually(sess).Should(Say(`HTTP GET Probe\: Path="/" Port=1500 HTTPHeaders=\[]`))
 				Expect(err).NotTo(HaveOccurred())
 				Eventually(sess).Should(Exit(0))
 
 				sess, err = cmd.Start("deis healthchecks:list -a %s", &user, app.Name)
 				Eventually(sess).Should(Say("=== %s Healthchecks", app.Name))
-				Eventually(sess).Should(Say(`HTTP GET Probe\: Path="/" Port=80 HTTPHeaders=\[]`))
+				Eventually(sess).Should(Say(`HTTP GET Probe\: Path="/" Port=1500 HTTPHeaders=\[]`))
 				Expect(err).NotTo(HaveOccurred())
 				Eventually(sess).Should(Exit(0))
 			})
 
 			Specify("that user can set a tcpSocket readiness healthcheck", func() {
-				sess, err := cmd.Start("deis healthchecks:set readiness tcpSocket -a %s 80", &user, app.Name)
+				sess, err := cmd.Start("deis healthchecks:set readiness tcpSocket -a %s 1500", &user, app.Name)
 				Eventually(sess).Should(Say("Applying readinessProbe healthcheck..."))
 				Eventually(sess, settings.MaxEventuallyTimeout).Should(Say("=== %s Healthchecks", app.Name))
-				Eventually(sess).Should(Say(`TCP Socket Probe\: Port=80`))
+				Eventually(sess).Should(Say(`TCP Socket Probe\: Port=1500`))
 				Expect(err).NotTo(HaveOccurred())
 				Eventually(sess).Should(Exit(0))
 
 				sess, err = cmd.Start("deis healthchecks:list -a %s", &user, app.Name)
 				Eventually(sess).Should(Say("=== %s Healthchecks", app.Name))
-				Eventually(sess).Should(Say(`TCP Socket Probe\: Port=80`))
+				Eventually(sess).Should(Say(`TCP Socket Probe\: Port=1500`))
 				Expect(err).NotTo(HaveOccurred())
 				Eventually(sess).Should(Exit(0))
 			})
