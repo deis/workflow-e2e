@@ -40,8 +40,10 @@ curl-cli-from-gcs-bucket() {
 	curl -f --silent --show-error --retry 5 --retry-delay 10 -o /usr/local/bin/deis "${url}"
 }
 
-# try both buckets for specific CLI_VERSION
-curl-cli-from-gcs-bucket "workflow-cli-master" || curl-cli-from-gcs-bucket "workflow-cli-pr"
+# try multiple buckets for specific CLI_VERSION
+curl-cli-from-gcs-bucket "workflow-cli-master" || \
+curl-cli-from-gcs-bucket "workflow-cli-pr" || \
+curl-cli-from-gcs-bucket "workflow-cli-release"
 chmod +x /usr/local/bin/deis
 
 echo "Workflow CLI Version '$(deis --version)' installed."
