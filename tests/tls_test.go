@@ -44,7 +44,7 @@ var _ = Describe("deis tls", func() {
 				apps.Destroy(user, app)
 			})
 
-			PSpecify("can enable/disable tls", func() {
+			Specify("can enable/disable tls", func() {
 				sess, err := cmd.Start("deis tls:enable --app=%s", &user, app.Name)
 				Eventually(sess, settings.MaxEventuallyTimeout).Should(Say("done"))
 				Expect(err).NotTo(HaveOccurred())
