@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"sort"
 	"strconv"
+	"time"
 
 	"github.com/deis/workflow-e2e/tests/cmd"
 	"github.com/deis/workflow-e2e/tests/cmd/apps"
@@ -61,7 +62,7 @@ var _ = Describe("deis ps", func() {
 					// test that there are the right number of processes listed
 					procsListing := listProcs(user, app, "").Out.Contents()
 					procs := scrapeProcs(app.Name, procsListing)
-					Expect(len(procs)).To(Equal(scaleTo))
+					Expect(procs).To(HaveLen(scaleTo))
 
 					// curl the app's root URL and print just the HTTP response code
 					cmdRetryTimeout := 60
@@ -69,6 +70,35 @@ var _ = Describe("deis ps", func() {
 					Eventually(cmd.Retry(curlCmd, strconv.Itoa(respCode), cmdRetryTimeout)).Should(BeTrue())
 				},
 				Entry("scales to 1", 1, 200),
+				Entry("scales to 3", 3, 200),
+				Entry("scales to 0", 0, 503),
+			)
+
+			DescribeTable("that user can interrupt a scaling event",
+				func(scaleTo, respCode int) {
+
+					sess, err := cmd.Start("deis ps:scale cmd=%d --app=%s", &user, scaleTo, app.Name)
+					Eventually(sess).Should(Say("Scaling processes... but first,"))
+
+					Expect(err).NotTo(HaveOccurred())
+
+					// Sleep for a split second to ensure scale command makes it to the server.
+					time.Sleep(200 * time.Millisecond)
+
+					// Interrupt and wait for exit.
+					sess = sess.Interrupt().Wait()
+
+					// Ensure the right number of processes listed.
+					Eventually(func() []string {
+						procsListing := listProcs(user, app, "").Out.Contents()
+						return scrapeProcs(app.Name, procsListing)
+					}, settings.MaxEventuallyTimeout).Should(HaveLen(scaleTo))
+
+					// curl the app's root URL and print just the HTTP response code
+					cmdRetryTimeout := 60
+					curlCmd := model.Cmd{CommandLineString: fmt.Sprintf(`curl -sL -w "%%{http_code}\\n" "%s" -o /dev/null`, app.URL)}
+					Eventually(cmd.Retry(curlCmd, strconv.Itoa(respCode), cmdRetryTimeout)).Should(BeTrue())
+				},
 				Entry("scales to 3", 3, 200),
 				Entry("scales to 0", 0, 503),
 			)
@@ -147,7 +177,7 @@ var _ = Describe("deis ps", func() {
 					afterProcs := scrapeProcs(app.Name, procsListing)
 
 					// compare the before and after sets of process names
-					Expect(len(afterProcs)).To(Equal(scaleTo))
+					Expect(afterProcs).To(HaveLen(scaleTo))
 					if scaleTo > 0 && restart != "by wrong type" {
 						Expect(beforeProcs).NotTo(Equal(afterProcs))
 					}
