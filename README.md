@@ -108,16 +108,18 @@ $ make docker-build docker-test-integration
 
 A third option is to run the test suite from within the very cluster that is under test.
 
-To install and start the tests:
+To install the [helm-classic](https://github.com/helm/helm-classic) chart and start the tests:
 
 ```console
-helm install workflow-beta2-e2e
+helmc fetch deis/workflow-dev-e2e
+helmc generate workflow-dev-e2e
+helmc install workflow-dev-e2e
 ```
 
 To monitor tests as they execute:
 
 ```console
-$ kubectl --namespace=deis logs -f workflow-beta2-e2e tests
+$ kubectl --namespace=deis logs -f workflow-dev-e2e tests
 ```
 
 ## Special Note on Resetting Cluster State
