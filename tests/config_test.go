@@ -217,17 +217,51 @@ multiline string.`
 				contents := []byte(`BIP=baz
 FOO=bar`)
 				err := ioutil.WriteFile(".env", contents, 0644)
+				Expect(err).NotTo(HaveOccurred())
 
 				sess, err := cmd.Start("deis config:push -a %s", &user, app.Name)
 				Eventually(sess, settings.MaxEventuallyTimeout).Should(Exit(0))
 				Expect(err).NotTo(HaveOccurred())
 				Eventually(sess).Should(Exit(0))
 
+				// Config should appear in config:list.
 				sess, err = cmd.Start("deis config:list -a %s", &user, app.Name)
-				Eventually(sess).Should(Say("=== %s Config", app.Name))
-				Eventually(sess).Should(Say(`BIP\s+baz`))
 				Expect(err).NotTo(HaveOccurred())
 				Eventually(sess).Should(Exit(0))
+
+				Eventually(sess).Should(Say("=== %s Config", app.Name))
+				Eventually(sess).Should(Say(`BIP\s+baz`))
+				Eventually(sess).Should(Say(`FOO\s+bar`))
+
+				// Config should be found within the app env vars (without any line endings).
+				sess, err = cmd.Start("deis run -a %s 'printf %%q $BIP'", &user, app.Name)
+				Expect(err).NotTo(HaveOccurred())
+				Eventually(sess).Should(Exit(0))
+				Eventually(sess).Should(Say("baz"))
+			})
+
+			Specify("that user can push configuration from an .env file with CRLF line endings", func() {
+				contents := []byte("BIP=baz\r\nFOO=bar\r\nWOO=goo\r\n")
+				err := ioutil.WriteFile(".env", contents, 0644)
+				Expect(err).NotTo(HaveOccurred())
+
+				sess, err := cmd.Start("deis config:push -a %s", &user, app.Name)
+				Eventually(sess, settings.MaxEventuallyTimeout).Should(Exit(0))
+				Expect(err).NotTo(HaveOccurred())
+				Eventually(sess).Should(Exit(0))
+
+				// Config should appear in the config:list
+				Eventually(sess).Should(Say("=== %s Config", app.Name))
+				Eventually(sess).Should(Say(`BIP\s+baz`))
+				Eventually(sess).Should(Say(`FOO\s+bar`))
+				Eventually(sess).Should(Say(`WOO\s+goo`))
+				Eventually(sess).Should(Exit(0))
+
+				// Config should be found within the app env vars (without any line endings).
+				sess, err = cmd.Start("deis run -a %s 'printf %%q $WOO'", &user, app.Name)
+				Expect(err).NotTo(HaveOccurred())
+				Eventually(sess).Should(Exit(0))
+				Eventually(sess).Should(Say("goo"))
 			})
 
 		})
