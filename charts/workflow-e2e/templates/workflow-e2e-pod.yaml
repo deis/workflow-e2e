@@ -1,0 +1,37 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: {{.Values.pod_name}}
+  labels:
+    heritage: deis
+spec:
+  restartPolicy: Never
+  containers:
+  - name: tests
+    image: quay.io/{{.Values.org}}/workflow-e2e:{{.Values.docker_tag}}
+    imagePullPolicy: {{.Values.pull_policy}}
+    env:
+      - name: GINKGO_NODES
+        value: "{{.Values.ginko_nodes}}"
+      - name: JUNIT
+        value: "true"
+      - name: CLI_VERSION
+        value: "{{.Values.cli_version}}"
+       # set TEST env variable to run appropriate tests in e2e suite
+      - name: TEST
+        value: "{{.Values.test}}"
+      - name: DEBUG_MODE
+        value: {{.Values.debug_mode}}
+    volumeMounts:
+    - name: artifact-volume
+      mountPath: /root
+  - name: artifacts
+    image: busybox
+    imagePullPolicy: Always
+    command: ["tail", "-f", "/dev/null"]
+    volumeMounts:
+    - name: artifact-volume
+      mountPath: /root
+  volumes:
+  - name: artifact-volume
+    emptyDir: {}
