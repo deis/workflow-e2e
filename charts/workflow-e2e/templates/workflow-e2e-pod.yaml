@@ -21,7 +21,7 @@ spec:
       - name: TEST
         value: "{{.Values.test}}"
       - name: DEBUG_MODE
-        value: {{.Values.debug_mode}}
+        value: "{{.Values.debug_mode}}"
     volumeMounts:
     - name: artifact-volume
       mountPath: /root
