@@ -150,7 +150,6 @@ var _ = Describe("deis apps", func() {
 
 			uuidRegExp := `[0-9a-f]{8}-([0-9a-f]{4}-){3}[0-9a-f]{12}`
 			procsRegexp := `(%s-[\w-]+) up \(v\d+\)`
-
 			var app model.App
 
 			BeforeEach(func() {
@@ -180,8 +179,11 @@ var _ = Describe("deis apps", func() {
 			Specify("that user can retrieve logs for that app", func() {
 				sess, err := cmd.Start("deis logs -a %s", &user, app.Name)
 				Eventually(sess).Should(SatisfyAll(
-					Say("INFO \\[%s\\]: %s created initial release", app.Name, user.Username),
-					Say("INFO \\[%s\\]: domain %s added", app.Name, app.Name)))
+					Say(`(.+) (deis\[controller\]: INFO config test\-.* updated)`),
+					Say(`(.*) (deis\[controller\]: INFO test\-.* created initial release)`),
+					Say(`(.*) (deis\[controller\]: INFO appsettings test\-.* updated)`),
+					Say(`(.*) (deis\[controller\]: INFO domain test\-.* added)`),
+					Say(`(.*) (deis\[controller\]: INFO build test\-.* created)`)))
 				Expect(err).NotTo(HaveOccurred())
 				Eventually(sess).Should(Exit(0))
 			})
