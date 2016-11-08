@@ -1,4 +1,4 @@
-FROM quay.io/deis/go-dev:0.17.0
+FROM quay.io/deis/go-dev:0.19.0
 
 ENV K8S_VERSION=1.2.6
 
