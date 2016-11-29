@@ -71,7 +71,8 @@ var _ = Describe("deis labels", func() {
 
 				sess, err = cmd.Start("deis labels:list --app=%s", &user, app.Name)
 				Eventually(sess).Should(Say("=== %s Label", app.Name))
-				Eventually(sess).Should(Say("service:         frontend\nteam:            bi"))
+				Eventually(sess).Should(Say(`service:\s+frontend`))
+				Eventually(sess).Should(Say(`team:\s+bi`))
 				Expect(err).NotTo(HaveOccurred())
 				Eventually(sess).Should(Exit(0))
 			})
@@ -110,7 +111,8 @@ var _ = Describe("deis labels", func() {
 
 					sess, err = cmd.Start("deis labels:list --app=%s", &user, app.Name)
 					Eventually(sess).Should(Say("=== %s Label", app.Name))
-					Eventually(sess).Should(Say("zoo:             animal"))
+					Eventually(sess).Should(Say(`team:\s+frontend`))
+					Eventually(sess).Should(Say(`zoo:\s+animal`))
 					Expect(err).NotTo(HaveOccurred())
 					Eventually(sess).Should(Exit(0))
 				})
