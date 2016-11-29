@@ -5,7 +5,7 @@
 set -eo pipefail
 
 function debug {
-	if [ ! -z "${DEBUG_MODE}" ]; then
+	if [ "${DEBUG_MODE}" == "true" ]; then
 		filename="/tmp/deis_debug"
 		touch "${filename}"
 		echo "Sleeping until ${filename} is deleted"
