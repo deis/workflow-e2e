@@ -12,7 +12,7 @@ spec:
     imagePullPolicy: {{.Values.pull_policy}}
     env:
       - name: GINKGO_NODES
-        value: "{{.Values.ginko_nodes}}"
+        value: "{{.Values.ginkgo_nodes}}"
       - name: JUNIT
         value: "true"
       - name: CLI_VERSION

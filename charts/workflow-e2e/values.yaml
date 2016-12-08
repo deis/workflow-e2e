@@ -2,7 +2,7 @@ org: "deisci"
 docker_tag: "canary"
 pull_policy: "Always"
 pod_name: "workflow-e2e"
-ginko_nodes: 15
+ginkgo_nodes: 15
 cli_version: "latest"
 test: "e2e"
 debug_mode: "false"
