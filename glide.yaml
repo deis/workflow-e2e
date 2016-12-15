@@ -5,4 +5,5 @@ import:
   subpackages:
   - gbytes
   - gexec
+- package: github.com/ThomasRooney/gexpect
 - package: github.com/deis/controller-sdk-go

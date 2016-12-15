@@ -1,5 +1,5 @@
-hash: 3e43564ccccf3c46aa70fb8028d93ce53e90cfc9db09d979d5c46ddf0734d09e
-updated: 2016-08-26T10:25:33.355599586-06:00
+hash: d4df07af09ac276ba107aff25a4019af3f670a70d5b6b453bddf6828b0a5c376
+updated: 2016-12-14T14:29:18.559567025-07:00
 imports:
 - name: github.com/deis/controller-sdk-go
   version: 598a9aebc04e0256cc44746a98587c5a46254ba8
@@ -8,35 +8,37 @@ imports:
   subpackages:
   - config
   - extensions/table
-  - reporters
   - internal/codelocation
+  - internal/containernode
   - internal/failer
+  - internal/leafnodes
   - internal/remote
+  - internal/spec
+  - internal/specrunner
   - internal/suite
   - internal/testingtproxy
   - internal/writer
+  - reporters
   - reporters/stenographer
   - types
-  - internal/containernode
-  - internal/leafnodes
-  - internal/spec
-  - internal/specrunner
 - name: github.com/onsi/gomega
   version: b48c9a8b2644326d0a44eaaacc8d83e35174a05d
   subpackages:
+  - format
   - gbytes
   - gexec
   - internal/assertion
   - internal/asyncassertion
+  - internal/oraclematcher
   - internal/testingtsupport
   - matchers
-  - types
-  - format
-  - internal/oraclematcher
   - matchers/support/goraph/bipartitegraph
   - matchers/support/goraph/edge
   - matchers/support/goraph/node
   - matchers/support/goraph/util
+  - types
+- name: github.com/ThomasRooney/gexpect
+  version: eff0508fd4adcb5867edac0815cba5b002e1e81b
 - name: golang.org/x/sys
   version: a646d33e2ee3172a661fc09bca23bb4889a41bc8
   subpackages:
@@ -46,6 +48,10 @@ imports:
 testImports:
 - name: github.com/goware/urlx
   version: 86bdc24560383254e8b977da31a823eddf904409
+- name: github.com/kballard/go-shellquote
+  version: d8ec1a69a250a17bb0e419c386eac1f3711dc142
+- name: github.com/kr/pty
+  version: ce7fa45920dc37a92de8377972e52bc55ffa8d57
 - name: github.com/PuerkitoBio/purell
   version: 1d5d1cfad45d42ec5f81fa8ef23de09cebc6dcc3
 - name: github.com/PuerkitoBio/urlesc

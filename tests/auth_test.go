@@ -1,6 +1,9 @@
 package tests
 
 import (
+	"fmt"
+	"os"
+
 	"github.com/deis/workflow-e2e/tests/cmd"
 	"github.com/deis/workflow-e2e/tests/cmd/auth"
 	"github.com/deis/workflow-e2e/tests/model"
@@ -10,6 +13,7 @@ import (
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gbytes"
 	. "github.com/onsi/gomega/gexec"
+	gexpect "github.com/ThomasRooney/gexpect"
 )
 
 var _ = Describe("deis auth", func() {
@@ -35,6 +39,42 @@ var _ = Describe("deis auth", func() {
 			Eventually(sess).Should(Exit(1))
 		})
 
+	})
+
+	Context("with an existing user", func() {
+
+		var user model.User
+
+		BeforeEach(func() {
+			user = model.NewUser()
+			os.Setenv("DEIS_PROFILE", user.Username)
+		})
+
+		AfterEach(func() {
+			auth.Cancel(user)
+			os.Unsetenv("DEIS_PROFILE")
+		})
+
+		Specify("that user can register in an interactive manner", func() {
+			sess, err := gexpect.Spawn(fmt.Sprintf("deis auth:register %s --password=%s", settings.DeisControllerURL, user.Password))
+			Expect(err).NotTo(HaveOccurred())
+
+			err = sess.Expect("username:")
+			Expect(err).NotTo(HaveOccurred())
+			sess.SendLine(user.Username)
+
+			err = sess.Expect("email:")
+			Expect(err).NotTo(HaveOccurred())
+			sess.SendLine(user.Email)
+
+			sess.Expect(fmt.Sprintf("Registered %s", user.Username))
+			Expect(err).NotTo(HaveOccurred())
+
+			sess.Expect(fmt.Sprintf("Logged in as %s", user.Username))
+			Expect(err).NotTo(HaveOccurred())
+
+			auth.Whoami(user)
+		})
 	})
 
 	Context("with an existing user", func() {
