@@ -78,14 +78,14 @@ var _ = Describe("deis certs", func() {
 
 		Specify("that user cannot get info on a non-existent cert", func() {
 			sess, err := cmd.Start("deis certs:info %s", &user, nonExistentCertName)
-			Eventually(sess.Err).Should(Say(util.PrependError(deis.ErrNotFound)))
+			Eventually(sess.Err).Should(Say(util.PrependError(certs.ErrNoCertMatch)))
 			Expect(err).NotTo(HaveOccurred())
 			Eventually(sess).Should(Exit(1))
 		})
 
 		Specify("that user cannot remove a non-existent cert", func() {
 			sess, err := cmd.Start("deis certs:remove %s", &user, nonExistentCertName)
-			Eventually(sess.Err).Should(Say(util.PrependError(deis.ErrNotFound)))
+			Eventually(sess.Err).Should(Say(util.PrependError(certs.ErrNoCertMatch)))
 			Expect(err).NotTo(HaveOccurred())
 			Eventually(sess).Should(Exit(1))
 		})
@@ -117,14 +117,14 @@ var _ = Describe("deis certs", func() {
 
 				Specify("that user cannot attach a non-existent cert to that domain", func() {
 					sess, err := cmd.Start("deis certs:attach %s %s", &user, nonExistentCertName, domain)
-					Eventually(sess.Err).Should(Say(util.PrependError(deis.ErrNotFound)))
+					Eventually(sess.Err).Should(Say(util.PrependError(certs.ErrNoCertMatch)))
 					Expect(err).NotTo(HaveOccurred())
 					Eventually(sess).Should(Exit(1))
 				})
 
 				Specify("that user cannot detatch a non-existent cert from that domain", func() {
 					sess, err := cmd.Start("deis certs:detach %s %s", &user, nonExistentCertName, domain)
-					Eventually(sess.Err).Should(Say(util.PrependError(deis.ErrNotFound)))
+					Eventually(sess.Err).Should(Say(util.PrependError(certs.ErrNoCertMatch)))
 					Expect(err).NotTo(HaveOccurred())
 					Eventually(sess).Should(Exit(1))
 				})
@@ -147,14 +147,14 @@ var _ = Describe("deis certs", func() {
 
 			Specify("that user cannot attach a cert to a non-existent domain", func() {
 				sess, err := cmd.Start("deis certs:attach %s %s", &user, cert.Name, nonExistentDomain)
-				Eventually(sess.Err).Should(Say(util.PrependError(deis.ErrNotFound)))
+				Eventually(sess.Err).Should(Say(util.PrependError(domains.ErrNoDomainMatch)))
 				Expect(err).NotTo(HaveOccurred())
 				Eventually(sess).Should(Exit(1))
 			})
 
 			Specify("that user cannot detach a cert from a non-existent domain", func() {
 				sess, err := cmd.Start("deis certs:detach %s %s", &user, cert.Name, nonExistentDomain)
-				Eventually(sess.Err).Should(Say(util.PrependError(deis.ErrNotFound)))
+				Eventually(sess.Err).Should(Say(util.PrependError(domains.ErrNoDomainMatch)))
 				Expect(err).NotTo(HaveOccurred())
 				Eventually(sess).Should(Exit(1))
 			})

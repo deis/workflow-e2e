@@ -1,6 +1,7 @@
 package certs
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/deis/workflow-e2e/tests/cmd"
@@ -11,6 +12,8 @@ import (
 	. "github.com/onsi/gomega/gbytes"
 	. "github.com/onsi/gomega/gexec"
 )
+
+var ErrNoCertMatch = errors.New("\"No Certificate matches the given query.\"")
 
 // The functions in this file implement SUCCESS CASES for commonly used `deis certs` subcommands.
 // This allows each of these to be re-used easily in multiple contexts.
