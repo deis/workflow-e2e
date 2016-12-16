@@ -1,7 +1,6 @@
 package tests
 
 import (
-	deis "github.com/deis/controller-sdk-go"
 	"github.com/deis/workflow-e2e/tests/cmd"
 	"github.com/deis/workflow-e2e/tests/cmd/apps"
 	"github.com/deis/workflow-e2e/tests/cmd/auth"
@@ -38,7 +37,7 @@ var _ = Describe("deis builds", func() {
 
 			Specify("that user cannot create a build for that app", func() {
 				sess, err := cmd.Start("deis builds:create -a %s %s", &user, bogusAppName, builds.ExampleImage)
-				Eventually(sess.Err).Should(Say(util.PrependError(deis.ErrNotFound)))
+				Eventually(sess.Err).Should(Say(util.PrependError(apps.ErrNoAppMatch)))
 				Expect(err).NotTo(HaveOccurred())
 				Eventually(sess).Should(Exit(1))
 			})

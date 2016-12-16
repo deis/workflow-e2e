@@ -53,7 +53,7 @@ var _ = Describe("deis apps", func() {
 
 			Specify("that user cannot get information about that app", func() {
 				sess, err := cmd.Start("deis info -a %s", &user, bogusAppName)
-				Eventually(sess.Err).Should(Say(util.PrependError(deis.ErrNotFound)))
+				Eventually(sess.Err).Should(Say(util.PrependError(apps.ErrNoAppMatch)))
 				Expect(err).NotTo(HaveOccurred())
 				Eventually(sess).Should(Exit(1))
 			})
@@ -67,7 +67,7 @@ var _ = Describe("deis apps", func() {
 
 			Specify("that user cannot open that app", func() {
 				sess, err := cmd.Start("deis open -a %s", &user, bogusAppName)
-				Eventually(sess.Err).Should(Say(util.PrependError(deis.ErrNotFound)))
+				Eventually(sess.Err).Should(Say(util.PrependError(apps.ErrNoAppMatch)))
 				Expect(err).NotTo(HaveOccurred())
 				Eventually(sess).Should(Exit(1))
 			})
@@ -75,7 +75,7 @@ var _ = Describe("deis apps", func() {
 			Specify("that user cannot run a command in that app's environment", func() {
 				sess, err := cmd.Start("deis apps:run -a %s echo Hello, 世界", &user, bogusAppName)
 				Eventually(sess).Should(Say("Running 'echo Hello, 世界'..."))
-				Eventually(sess.Err).Should(Say(util.PrependError(deis.ErrNotFound)))
+				Eventually(sess.Err).Should(Say(util.PrependError(apps.ErrNoAppMatch)))
 				Expect(err).NotTo(HaveOccurred())
 				Eventually(sess).ShouldNot(Exit(0))
 			})

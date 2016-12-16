@@ -1,6 +1,7 @@
 package apps
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -16,6 +17,8 @@ import (
 	. "github.com/onsi/gomega/gbytes"
 	. "github.com/onsi/gomega/gexec"
 )
+
+var ErrNoAppMatch = errors.New("\"No App matches the given query.\"")
 
 // The functions in this file implement SUCCESS CASES for commonly used `deis apps` subcommands.
 // This allows each of these to be re-used easily in multiple contexts.
