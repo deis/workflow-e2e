@@ -1,10 +1,10 @@
 hash: d4df07af09ac276ba107aff25a4019af3f670a70d5b6b453bddf6828b0a5c376
-updated: 2016-12-14T14:29:18.559567025-07:00
+updated: 2017-01-09T13:13:07.891110078-08:00
 imports:
 - name: github.com/deis/controller-sdk-go
-  version: 598a9aebc04e0256cc44746a98587c5a46254ba8
+  version: 9520b6c460202f376856d042ac4864ee951cdf3a
 - name: github.com/onsi/ginkgo
-  version: 43e2af1f01ace55adbb6d7d0f30416476db1baae
+  version: a23f924ce96d61f963fb6219b8ff069d8d768cc2
   subpackages:
   - config
   - extensions/table
@@ -20,9 +20,11 @@ imports:
   - internal/writer
   - reporters
   - reporters/stenographer
+  - reporters/stenographer/support/go-colorable
+  - reporters/stenographer/support/go-isatty
   - types
 - name: github.com/onsi/gomega
-  version: b48c9a8b2644326d0a44eaaacc8d83e35174a05d
+  version: f1f0f388b31eca4e2cbe7a6dd8a3a1dfddda5b1c
   subpackages:
   - format
   - gbytes
@@ -38,25 +40,31 @@ imports:
   - matchers/support/goraph/util
   - types
 - name: github.com/ThomasRooney/gexpect
-  version: eff0508fd4adcb5867edac0815cba5b002e1e81b
+  version: 5482f03509440585d13d8f648989e05903001842
 - name: golang.org/x/sys
-  version: a646d33e2ee3172a661fc09bca23bb4889a41bc8
+  version: d75a52659825e75fff6158388dddc6a5b04f9ba5
   subpackages:
   - unix
 - name: gopkg.in/yaml.v2
-  version: e4d366fc3c7938e2958e662b4258c7a89e1f0e3e
+  version: a5b47d31c556af34a302ce5d659e6fea44d90de0
 testImports:
 - name: github.com/goware/urlx
-  version: 86bdc24560383254e8b977da31a823eddf904409
+  version: 8bb4a2e4339f55b15164907177e96e9faf885504
 - name: github.com/kballard/go-shellquote
   version: d8ec1a69a250a17bb0e419c386eac1f3711dc142
 - name: github.com/kr/pty
   version: ce7fa45920dc37a92de8377972e52bc55ffa8d57
 - name: github.com/PuerkitoBio/purell
-  version: 1d5d1cfad45d42ec5f81fa8ef23de09cebc6dcc3
+  version: 0bcb03f4b4d0a9428594752bd2a3b9aa0a9d4bd4
 - name: github.com/PuerkitoBio/urlesc
-  version: 5fa9ff0392746aeae1c4b37fcc42c65afa7a9587
+  version: 5bd2802263f21d8788851d5305584c82a5c75d7e
 - name: golang.org/x/net
-  version: bc3663df0ac92f928d419e31e0d2af22e683a5a2
+  version: c2528b2dd8352441850638a8bb678c2ad056fd3e
   subpackages:
   - idna
+- name: golang.org/x/text
+  version: 47a200a05c8b3fd1b698571caecbb68beb2611ec
+  subpackages:
+  - transform
+  - unicode/norm
+  - width
