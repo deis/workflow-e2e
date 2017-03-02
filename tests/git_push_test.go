@@ -189,6 +189,20 @@ var _ = Describe("git push deis master", func() {
 						git.Push(user, keyPath, app, "Powered by Deis")
 					})
 
+					Specify("that user can deploy that app using a git push after setting config values", func() {
+						sess, err := cmd.Start("deis config:set -a %s PORT=80 POWERED_BY=midi-chlorians", &user, app.Name)
+						Expect(err).NotTo(HaveOccurred())
+						Eventually(sess).Should(Say("Creating config"))
+						Eventually(sess, settings.MaxEventuallyTimeout).Should(Say("=== %s Config", app.Name))
+						output := string(sess.Out.Contents())
+						Expect(output).To(MatchRegexp(`PORT\s+80`))
+						Expect(output).To(MatchRegexp(`POWERED_BY\s+midi-chlorians`))
+						Expect(err).NotTo(HaveOccurred())
+						Eventually(sess).Should(Exit(0))
+
+						git.Push(user, keyPath, app, "Powered by midi-chlorians")
+					})
+
 					Specify("that user can deploy that app only once concurrently", func() {
 						sess := git.StartPush(user, keyPath)
 						// sleep for five seconds, then push the same app
