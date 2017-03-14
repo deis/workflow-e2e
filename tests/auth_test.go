@@ -1,7 +1,6 @@
 package tests
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/deis/workflow-e2e/tests/cmd"
@@ -13,7 +12,6 @@ import (
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gbytes"
 	. "github.com/onsi/gomega/gexec"
-	gexpect "github.com/ThomasRooney/gexpect"
 )
 
 var _ = Describe("deis auth", func() {
@@ -41,7 +39,7 @@ var _ = Describe("deis auth", func() {
 
 	})
 
-	Context("with an existing user", func() {
+	Context("with a non-admin user", func() {
 
 		var user model.User
 
@@ -51,38 +49,28 @@ var _ = Describe("deis auth", func() {
 		})
 
 		AfterEach(func() {
-			auth.Cancel(user)
+			sess, err := cmd.Start("deis auth:cancel --username=%s --password=%s --yes", &user, user.Username, user.Password)
+			Expect(err).To(BeNil())
+			Eventually(sess).Should(Exit(1))
+			Expect(err).NotTo(HaveOccurred())
 			os.Unsetenv("DEIS_PROFILE")
 		})
 
-		Specify("that user can register in an interactive manner", func() {
-			sess, err := gexpect.Spawn(fmt.Sprintf("deis auth:register %s --password=%s", settings.DeisControllerURL, user.Password))
+		Specify("that user cannot register when registration mode is 'admin_only', as is the default", func() {
+			sess, err := cmd.Start("deis auth:register %s --username=%s --password=%s --email=%s", nil, settings.DeisControllerURL, user.Username, user.Password, user.Email)
 			Expect(err).NotTo(HaveOccurred())
-
-			err = sess.Expect("username:")
-			Expect(err).NotTo(HaveOccurred())
-			sess.SendLine(user.Username)
-
-			err = sess.Expect("email:")
-			Expect(err).NotTo(HaveOccurred())
-			sess.SendLine(user.Email)
-
-			sess.Expect(fmt.Sprintf("Registered %s", user.Username))
-			Expect(err).NotTo(HaveOccurred())
-
-			sess.Expect(fmt.Sprintf("Logged in as %s", user.Username))
-			Expect(err).NotTo(HaveOccurred())
-
-			auth.Whoami(user)
+			Eventually(sess.Err).Should(Say("Registration failed: Error: You do not have permission to perform this action."))
+			Eventually(sess).Should(Exit(1))
 		})
+
 	})
 
 	Context("with an existing user", func() {
-
+		admin := model.Admin
 		var user model.User
 
 		BeforeEach(func() {
-			user = auth.Register()
+			user = auth.RegisterAndLogin()
 		})
 
 		AfterEach(func() {
@@ -94,8 +82,8 @@ var _ = Describe("deis auth", func() {
 			auth.Login(user) // Log back in so cleanup won't fail.
 		})
 
-		Specify("a new user cannot register using the same details", func() {
-			sess, err := cmd.Start("deis auth:register %s --username=%s --password=%s --email=%s", nil, settings.DeisControllerURL, user.Username, user.Password, user.Email)
+		Specify("a new user cannot be registered using the same details", func() {
+			sess, err := cmd.Start("deis auth:register %s --username=%s --password=%s --email=%s", &admin, settings.DeisControllerURL, user.Username, user.Password, user.Email)
 			Eventually(sess.Err).Should(Say("Registration failed"))
 			Expect(err).NotTo(HaveOccurred())
 			Eventually(sess).Should(Exit(1))
@@ -132,7 +120,7 @@ var _ = Describe("deis auth", func() {
 			var otherUser model.User
 
 			BeforeEach(func() {
-				otherUser = auth.Register()
+				otherUser = auth.RegisterAndLogin()
 			})
 
 			AfterEach(func() {

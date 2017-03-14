@@ -35,7 +35,7 @@ var _ = Describe("deis perms", func() {
 			var otherUser model.User
 
 			BeforeEach(func() {
-				otherUser = auth.Register()
+				otherUser = auth.RegisterAndLogin()
 			})
 
 			AfterEach(func() {
@@ -79,7 +79,7 @@ var _ = Describe("deis perms", func() {
 					var thirdUser model.User
 
 					BeforeEach(func() {
-						thirdUser = auth.Register()
+						thirdUser = auth.RegisterAndLogin()
 					})
 
 					AfterEach(func() {
@@ -134,7 +134,7 @@ var _ = Describe("deis perms", func() {
 			var otherAdmin model.User
 
 			BeforeEach(func() {
-				otherAdmin = auth.Register()
+				otherAdmin = auth.RegisterAndLogin()
 				sess, err := cmd.Start("deis perms:create %s --admin", &admin, otherAdmin.Username)
 				Eventually(sess, settings.MaxEventuallyTimeout).Should(Say("Adding %s to system administrators... done\n", otherAdmin.Username))
 				Expect(err).NotTo(HaveOccurred())
@@ -167,7 +167,7 @@ var _ = Describe("deis perms", func() {
 		var user model.User
 
 		BeforeEach(func() {
-			user = auth.Register()
+			user = auth.RegisterAndLogin()
 		})
 
 		AfterEach(func() {
@@ -226,7 +226,7 @@ var _ = Describe("deis perms", func() {
 				var otherUser model.User
 
 				BeforeEach(func() {
-					otherUser = auth.Register()
+					otherUser = auth.RegisterAndLogin()
 				})
 
 				AfterEach(func() {

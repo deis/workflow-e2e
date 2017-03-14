@@ -25,7 +25,7 @@ var _ = Describe("all dockerfile apps", func() {
 		var keyPath string
 
 		BeforeEach(func() {
-			user = auth.Register()
+			user = auth.RegisterAndLogin()
 		})
 
 		AfterEach(func() {
