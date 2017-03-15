@@ -24,7 +24,7 @@ var _ = Describe("deis tls", func() {
 		var user model.User
 
 		BeforeEach(func() {
-			user = auth.Register()
+			user = auth.RegisterAndLogin()
 		})
 
 		AfterEach(func() {

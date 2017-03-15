@@ -30,7 +30,7 @@ var _ = Describe("deis ps", func() {
 		var user model.User
 
 		BeforeEach(func() {
-			user = auth.Register()
+			user = auth.RegisterAndLogin()
 		})
 
 		AfterEach(func() {

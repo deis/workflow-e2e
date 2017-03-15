@@ -26,7 +26,7 @@ var _ = Describe("deis routing", func() {
 		var user model.User
 
 		BeforeEach(func() {
-			user = auth.Register()
+			user = auth.RegisterAndLogin()
 		})
 
 		AfterEach(func() {

@@ -27,7 +27,7 @@ var _ = Describe("git push deis master", func() {
 		var keyPath string
 
 		BeforeEach(func() {
-			user = auth.Register()
+			user = auth.RegisterAndLogin()
 		})
 
 		AfterEach(func() {

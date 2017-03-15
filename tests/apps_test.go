@@ -26,7 +26,7 @@ var _ = Describe("deis apps", func() {
 		var user model.User
 
 		BeforeEach(func() {
-			user = auth.Register()
+			user = auth.RegisterAndLogin()
 		})
 
 		AfterEach(func() {
@@ -106,7 +106,7 @@ var _ = Describe("deis apps", func() {
 				var otherUser model.User
 
 				BeforeEach(func() {
-					otherUser = auth.Register()
+					otherUser = auth.RegisterAndLogin()
 				})
 
 				AfterEach(func() {

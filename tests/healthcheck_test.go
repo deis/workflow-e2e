@@ -22,7 +22,7 @@ var _ = Describe("deis healthchecks", func() {
 		var user model.User
 
 		BeforeEach(func() {
-			user = auth.Register()
+			user = auth.RegisterAndLogin()
 		})
 
 		AfterEach(func() {

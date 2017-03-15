@@ -18,7 +18,6 @@ import (
 	"strings"
 )
 
-// TODO (bacongobbler): inspect kubectl for limits being applied to manifest
 var _ = Describe("deis limits", func() {
 
 	Context("with an existing user", func() {
@@ -26,7 +25,7 @@ var _ = Describe("deis limits", func() {
 		var user model.User
 
 		BeforeEach(func() {
-			user = auth.Register()
+			user = auth.RegisterAndLogin()
 		})
 
 		AfterEach(func() {
