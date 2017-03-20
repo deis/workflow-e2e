@@ -2,13 +2,11 @@ package auth
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/deis/workflow-e2e/tests/cmd"
 	"github.com/deis/workflow-e2e/tests/model"
 	"github.com/deis/workflow-e2e/tests/settings"
 
-	gexpect "github.com/ThomasRooney/gexpect"
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gbytes"
 	. "github.com/onsi/gomega/gexec"
@@ -25,33 +23,22 @@ import (
 // the tests.
 func RegisterAdmin() {
 	admin := model.Admin
-	os.Setenv("DEIS_PROFILE", admin.Username)
-
-	// Login interactively since we don't have a specific spec to do so
-	sess, err := gexpect.Spawn(fmt.Sprintf("deis auth:register %s --password=%s", settings.DeisControllerURL, admin.Password))
+	sess, err := cmd.Start("deis auth:register %s --username=%s --password=%s --email=%s", &admin, settings.DeisControllerURL, admin.Username, admin.Password, admin.Email)
+	Expect(err).To(BeNil())
+	Eventually(sess).Should(Exit())
 	Expect(err).NotTo(HaveOccurred())
 
-	err = sess.Expect("username:")
-	Expect(err).NotTo(HaveOccurred())
-	sess.SendLine(admin.Username)
-
-	err = sess.Expect("email:")
-	Expect(err).NotTo(HaveOccurred())
-	sess.SendLine(admin.Email)
-
-	sess.Expect(fmt.Sprintf("Registered %s", admin.Username))
-	Expect(err).NotTo(HaveOccurred())
-
-	sess.Expect(fmt.Sprintf("Logged in as %s", admin.Username))
-	Expect(err).NotTo(HaveOccurred())
+	// We cannot entirely count on the registration having succeeded. It may have failed if a user
+	// with the username "admin" already exists. However, if that user IS indeed an admin and their
+	// password is also "admin" (e.g. the admin was created by a previous run of these tests), then
+	// we can proceed... so attempt to login...
+	Login(admin)
 
 	// Now verify this user is an admin by running a privileged command.
-	listCmd, err := cmd.Start("deis users:list", &admin)
+	sess, err = cmd.Start("deis users:list", &admin)
 	Expect(err).To(BeNil())
-	Eventually(listCmd).Should(Exit(0))
+	Eventually(sess).Should(Exit(0))
 	Expect(err).NotTo(HaveOccurred())
-
-	os.Unsetenv("DEIS_PROFILE")
 }
 
 // Register executes `deis auth:register --login=false` using a randomized username and returns a model.User.
