@@ -1,6 +1,6 @@
 # Deis Workflow End to End Tests v2
 
-[![Build Status](https://travis-ci.org/deis/workflow-e2e.svg?branch=master)](https://travis-ci.org/deis/workflow-e2e)
+[![Build Status](https://ci.deis.io/job/workflow-e2e/badge/icon)](https://ci.deis.io/job/workflow-e2e)
 [![Go Report Card](https://goreportcard.com/badge/github.com/deis/workflow-e2e)](https://goreportcard.com/report/github.com/deis/workflow-e2e)
 [![Docker Repository on Quay](https://quay.io/repository/deisci/deis-e2e/status "Docker Repository on Quay")](https://quay.io/repository/deisci/deis-e2e)
 
