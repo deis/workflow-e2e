@@ -17,7 +17,7 @@ spec:
         value: "true"
       - name: CLI_VERSION
         value: "{{.Values.cli_version}}"
-       # set TEST env variable to run appropriate tests in e2e suite
+      # set TEST env variable to run appropriate tests in e2e suite
       - name: TEST
         value: "{{.Values.test}}"
       - name: DEBUG_MODE

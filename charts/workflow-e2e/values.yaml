@@ -6,3 +6,9 @@ ginkgo_nodes: 15
 cli_version: "latest"
 test: "e2e"
 debug_mode: "false"
+
+spotify-docker-gc:
+  cron:
+    schedule: "*/1 * * * *"
+  env:
+    dockerAPIVersion: "1.23"
