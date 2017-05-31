@@ -1,6 +1,6 @@
 FROM quay.io/deis/go-dev:0.19.0
 
-ENV K8S_VERSION=1.4.6
+ENV K8S_VERSION=1.6.3
 
 RUN go get -u -v github.com/onsi/ginkgo/ginkgo \
 	&& curl -o /usr/local/bin/kubectl -Os https://storage.googleapis.com/kubernetes-release/release/v$K8S_VERSION/bin/linux/amd64/kubectl \
