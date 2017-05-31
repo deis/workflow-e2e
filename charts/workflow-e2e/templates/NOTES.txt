@@ -1,0 +1,5 @@
+To monitor tests as they execute:
+
+```console
+$ kubectl --namespace={{ .Release.Namespace }} logs -f workflow-e2e tests
+```
