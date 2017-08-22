@@ -1,3 +1,9 @@
+
+|![](https://upload.wikimedia.org/wikipedia/commons/thumb/1/17/Warning.svg/156px-Warning.svg.png) | Deis Workflow will soon no longer be maintained.<br />Please [read the announcement](https://deis.com/blog/2017/deis-workflow-final-release/) for more detail. |
+|---:|---|
+| 09/07/2017 | Deis Workflow [v2.18][] final release before entering maintenance mode |
+| 03/01/2018 | End of Workflow maintenance: critical patches no longer merged |
+
 # Deis Workflow End to End Tests v2
 
 [![Build Status](https://ci.deis.io/job/workflow-e2e/badge/icon)](https://ci.deis.io/job/workflow-e2e)
@@ -141,3 +147,4 @@ Note that this is an ongoing issue for which we're planning [a more comprehensiv
 [install-k8s]: http://kubernetes.io/gettingstarted/
 [issues]: https://github.com/deis/workflow-e2e/issues
 [prs]: https://github.com/deis/workflow-e2e/pulls
+[v2.18]: https://github.com/deis/workflow/releases/tag/v2.18.0
